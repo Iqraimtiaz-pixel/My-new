@@ -21,28 +21,26 @@
 
   <div id="login">
     <h2>VibeZ Login 💜</h2>
-    <input id="email" type="email" placeholder="Email daalo">
-    <input id="pass" type="password" placeholder="Password daalo">
-    <button onclick="signup()">Naya Account Banao</button>
-    <button onclick="login()">Login Karo</button>
+    <input id="email" type="email" placeholder="Enter Email">
+    <input id="pass" type="password" placeholder="Enter Password">
+    <button onclick="signup()">Create New Account</button>
+    <button onclick="login()">Login</button>
     <p id="error" style="color:#f87171; text-align:center;"></p>
   </div>
 
   <div id="chat" style="display:none">
     <h2>VibeZ Chat 🚀</h2>
     <div id="messages"></div>
-    <input id="msgInput" placeholder="Message likho...">
+    <input id="msgInput" placeholder="Type a message...">
     <button onclick="sendMsg()">Send</button>
     <button id="logoutBtn" onclick="logout()">Logout</button>
   </div>
 
 <script type="module">
-  // Firebase imports - sab kuch ready hai
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  // TERI FIREBASE CONFIG - MAIN NE DAAL DI ✅
   const firebaseConfig = {
     apiKey: "AIzaSyCOk009zNd4BMtS0ySPedwhNTwNMCc-CyI",
     authDomain: "vibez-6ed71.firebaseapp.com",
@@ -53,34 +51,29 @@
     measurementId: "G-SHVC4TZVYL"
   };
 
-  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
   const errorBox = document.getElementById('error');
 
-  // Signup function
   window.signup = () => {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('pass').value;
     errorBox.innerText = '';
     createUserWithEmailAndPassword(auth, email, pass)
-     .catch((e) => errorBox.innerText = e.message);
+    .catch((e) => errorBox.innerText = e.message);
   }
 
-  // Login function
   window.login = () => {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('pass').value;
     errorBox.innerText = '';
     signInWithEmailAndPassword(auth, email, pass)
-     .catch((e) => errorBox.innerText = e.message);
+    .catch((e) => errorBox.innerText = e.message);
   }
 
-  // Logout function
   window.logout = () => signOut(auth);
 
-  // Check karo user login hai ya nahi
   onAuthStateChanged(auth, (user) => {
     if (user) {
       document.getElementById('login').style.display = 'none';
@@ -92,7 +85,6 @@
     }
   });
 
-  // Message bhejo
   window.sendMsg = async () => {
     const text = document.getElementById('msgInput').value;
     const user = auth.currentUser;
@@ -102,26 +94,6 @@
         email: user.email,
         time: serverTimestamp()
       });
-      document.getElementById('msgInput').value = '';
-    }
-  }
+      document.getElementById('msgInput').
 
-  // Message load karo real-time
-  function loadMsgs() {
-    const q = query(collection(db, "messages"), orderBy("time"));
-    onSnapshot(q, (snapshot) => {
-      let html = '';
-      snapshot.forEach((doc) => {
-        const msg = doc.data();
-        const name = msg.email.split('@')[0];
-        html += `<div class="msg"><b>${name}:</b> ${msg.text}</div>`;
-      });
-      const msgDiv = document.getElementById('messages');
-      msgDiv.innerHTML = html;
-      msgDiv.scrollTop = msgDiv.scrollHeight;
-    });
-  }
-</script>
-
-</body>
-</html>
+ 
