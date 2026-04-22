@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
   <title>VibeZ - Anonymous to Friends</title>
@@ -20,11 +20,12 @@
     #tabs button { flex: 1; font-size: 13px; position: relative; }
    .activeTab { background: #a855f7!important; }
    .notifDot { position: absolute; top: 4px; right: 8px; background: #dc2626; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; line-height: 18px; }
-    #messages, #userList, #requestList, #friendsList { height: 45vh; overflow-y: scroll; border: 1px solid #333; border-radius: 12px; padding: 10px; margin-bottom: 10px; background: #181818; }
+    #messages, #userList, #requestList, #friendsList { height: 42vh; overflow-y: scroll; border: 1px solid #333; border-radius: 12px; padding: 10px; margin-bottom: 10px; background: #181818; }
    .msg,.userRow { margin: 8px 0; padding: 10px; background: #262626; border-radius: 10px; word-wrap: break-word; }
    .msg b { color: #a855f7; }
    .msg .anon { color: #f59e0b; }
    .msg .system { text-align: center; color: #16a34a; font-size: 13px; background: #1f2937; }
+   .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
    .userRow { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
    .userRow:hover { background: #333; }
    .profilePic { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; margin-right: 10px; }
@@ -32,18 +33,25 @@
    .onlineDot { width: 8px; height: 8px; background: #16a34a; border-radius: 50%; margin-left: 5px; }
    .offlineDot { width: 8px; height: 8px; background: #6b7280; border-radius: 50%; margin-left: 5px; }
    .lastSeen { font-size: 11px; color: #6b7280; }
+   .streak { color: #f97316; font-weight: bold; margin-left: 5px; }
     #logoutBtn { background: #dc2626; }
    .hidden { display: none; }
    .searchBox { display: flex; gap: 8px; margin-bottom: 10px; }
    .searchBox input { margin: 0; }
    .searchBox button { width: auto; margin: 0; }
-   .chatHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+   .chatHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
    .msgCount { font-size: 12px; color: #9ca3af; }
+   .progressBar { width: 100%; height: 6px; background: #333; border-radius: 3px; margin-bottom: 10px; }
+   .progressFill { height: 100%; background: #a855f7; border-radius: 3px; transition: 0.3s; }
    .settingRow { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; padding: 10px; background: #262626; border-radius: 10px; }
    .toggle { width: 50px; height: 25px; background: #4b5563; border-radius: 25px; position: relative; cursor: pointer; }
    .toggle.on { background: #16a34a; }
    .toggleBall { width: 21px; height: 21px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.2s; }
    .toggle.on .toggleBall { left: 27px; }
+   .inputRow { display: flex; gap: 8px; }
+   .inputRow input { margin: 0; }
+   .inputRow button { width: auto; margin: 0; padding: 14px; }
+   .emojiBtn { font-size: 20px; background: #262626; }
   </style>
 </head>
 <body>
@@ -90,13 +98,16 @@
 
     <!-- PROFILE TAB -->
     <div id="profileDiv" class="hidden">
+      <div style="text-align:center;margin-bottom:15px;">
+        <img id="myProfilePic" class="profilePic" style="width:80px;height:80px;" src="https://i.imgur.com/6VBx3io.png">
+      </div>
       <div class="settingRow">
         <span>Display Name</span>
         <input id="displayName" style="width: 60%; margin: 0; padding: 8px;" placeholder="Your name">
       </div>
       <div class="settingRow">
         <span>Profile Pic URL</span>
-        <input id="picUrl" style="width: 60%; margin: 0; padding: 8px;" placeholder="https://imgur.com/xxx.jpg">
+        <input id="picUrl" style="width: 60%; margin: 0; padding: 8px;" placeholder="Imgur link paste karo">
       </div>
       <div class="settingRow">
         <span>Show Online Status</span>
@@ -122,9 +133,13 @@
         </div>
         <span class="msgCount" id="msgCount"></span>
       </div>
+      <div class="progressBar"><div id="progressFill" class="progressFill" style="width:0%"></div></div>
       <div id="messages"></div>
-      <input id="msgInput" placeholder="Type a message...">
-      <button onclick="sendMsg()">Send</button>
+      <div class="inputRow">
+        <button class="emojiBtn" onclick="addEmoji()">😊</button>
+        <input id="msgInput" placeholder="Type or paste Imgur link for pic...">
+        <button onclick="sendMsg()">Send</button>
+      </div>
     </div>
 
     <button id="logoutBtn" onclick="logout()">Logout</button>
@@ -154,6 +169,13 @@
   let currentChatId = null;
   let currentChatUnsub = null;
   let currentChatPartner = null;
+
+  const emojis = ['😂','😭','💜','🔥','👑','😍','🥰','😎','🫂','✨','🚀','✅','😭','🤣','😊','🙄','😘'];
+  
+  window.addEmoji = () => {
+    const e = emojis[Math.floor(Math.random() * emojis.length)];
+    document.getElementById('msgInput').value += e;
+  }
 
   window.signup = async () => {
     const username = document.getElementById('username').value.trim().toLowerCase().replace('@', '');
@@ -209,6 +231,7 @@
         document.getElementById('myUsername').innerText = currentUserData.username;
         document.getElementById('displayName').value = currentUserData.displayName || currentUserData.username;
         document.getElementById('picUrl').value = currentUserData.picUrl || '';
+        document.getElementById('myProfilePic').src = currentUserData.picUrl || 'https://i.imgur.com/6VBx3io.png';
         if (!currentUserData.showOnline) document.getElementById('onlineToggle').classList.remove('on');
         if (!currentUserData.showLastSeen) document.getElementById('lastSeenToggle').classList.remove('on');
         loadFriends();
@@ -250,6 +273,20 @@
     return `last seen ${Math.floor(diff/86400)}d ago`;
   }
 
+  function isToday(ts) {
+    if (!ts) return false;
+    const date = ts.toDate();
+    const today = new Date();
+    return date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+  }
+
+  function isYesterday(ts) {
+    if (!ts) return false;
+    const date = ts.toDate();
+    const yesterday = new Date(Date.now() - 86400000);
+    return date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear();
+  }
+
   window.openChat = async (friendUid, friendUsername) => {
     currentChatPartner = { uid: friendUid, username: friendUsername };
     currentChatId = getChatId(currentUser.uid, friendUid);
@@ -262,11 +299,22 @@
     const chatDoc = await getDoc(doc(db, "chats", currentChatId));
     let revealed = chatDoc.exists() && chatDoc.data().revealed;
     let totalMsgs = chatDoc.exists() ? chatDoc.data().totalMsgs || 0 : 0;
+    let streak = chatDoc.exists() ? chatDoc.data().streak || 0 : 0;
+    let lastChatDate = chatDoc.exists() ? chatDoc.data().lastChatDate : null;
+
+    // Streak logic
+    if (chatDoc.exists()) {
+      if (!isToday(lastChatDate) && !isYesterday(lastChatDate)) {
+        streak = 0; // Streak toot gaya
+        await updateDoc(doc(db, "chats", currentChatId), { streak: 0 });
+      }
+    }
 
     document.getElementById('chatPic').src = friendData.picUrl || 'https://i.imgur.com/6VBx3io.png';
-    document.getElementById('chatWith').innerHTML = revealed ? `@${friendData.displayName || friendUsername}` : `<span class="anon">@hidden_${friendUid.slice(0,4)}</span>`;
+    document.getElementById('chatWith').innerHTML = revealed ? `@${friendData.displayName || friendUsername} ${streak > 0 ? `<span class="streak">🔥${streak}</span>` : ''}` : `<span class="anon">@hidden_${friendUid.slice(0,4)}</span>`;
     document.getElementById('chatStatus').innerText = friendData.showOnline && friendData.online ? 'online' : (friendData.showLastSeen ? formatLastSeen(friendData.lastSeen) : '');
-    document.getElementById('msgCount').innerText = `${totalMsgs}/50 msgs`;
+    document.getElementById('msgCount').innerText = `${totalMsgs}/50`;
+    document.getElementById('progressFill').style.width = `${Math.min((totalMsgs/50)*100, 100)}%`;
 
     if (currentChatUnsub) currentChatUnsub();
     const q = query(collection(db, "chats", currentChatId, "messages"), orderBy("time"));
@@ -280,7 +328,11 @@
           html += `<div class="msg system">${msg.text}</div>`;
         } else {
           const name = revealed ? `@${msg.username}` : `<span class="anon">@hidden_${msg.uid.slice(0,4)}</span>`;
-          html += `<div class="msg"><b>${name}:</b> ${msg.text}</div>`;
+          let content = msg.text;
+          if (msg.text.includes('http') && (msg.text.includes('jpg') || msg.text.includes('png') || msg.text.includes('gif') || msg.text.includes('jpeg') || msg.text.includes('imgur'))) {
+            content = `<img src="${msg.text}" alt="image">`;
+          }
+          html += `<div class="msg"><b>${name}:</b> ${content}</div>`;
         }
       });
       document.getElementById('messages').innerHTML = html;
@@ -303,13 +355,26 @@
     document.getElementById('msgInput').value = '';
     const chatRef = doc(db, "chats", currentChatId);
     const chatDoc = await getDoc(chatRef);
-    let totalMsgs = 0, revealed = false;
+    let totalMsgs = 0, revealed = false, streak = 0, lastChatDate = null;
     if (!chatDoc.exists()) {
-      await setDoc(chatRef, { totalMsgs: 0, revealed: false, users: [currentUser.uid, currentChatPartner.uid] });
+      await setDoc(chatRef, { totalMsgs: 0, revealed: false, users: [currentUser.uid, currentChatPartner.uid], streak: 0, lastChatDate: null });
     } else {
       totalMsgs = chatDoc.data().totalMsgs || 0;
       revealed = chatDoc.data().revealed || false;
+      streak = chatDoc.data().streak || 0;
+      lastChatDate = chatDoc.data().lastChatDate;
     }
+
+    // Streak update
+    if (!isToday(lastChatDate)) {
+      if (isYesterday(lastChatDate) || !lastChatDate) {
+        streak++; // Streak badhao
+      } else {
+        streak = 1; // Naya streak
+      }
+      await updateDoc(chatRef, { streak: streak, lastChatDate: serverTimestamp() });
+    }
+
     totalMsgs++;
     await updateDoc(chatRef, { totalMsgs: totalMsgs });
     await addDoc(collection(db, "chats", currentChatId, "messages"), {
@@ -326,9 +391,10 @@
         time: serverTimestamp(),
         type: 'system'
       });
-      document.getElementById('chatWith').innerHTML = `@${currentChatPartner.username}`;
+      document.getElementById('chatWith').innerHTML = `@${currentChatPartner.username} ${streak > 0 ? `<span class="streak">🔥${streak}</span>` : ''}`;
     }
-    document.getElementById('msgCount').innerText = `${totalMsgs}/50 msgs`;
+    document.getElementById('msgCount').innerText = `${totalMsgs}/50`;
+    document.getElementById('progressFill').style.width = `${Math.min((totalMsgs/50)*100, 100)}%`;
   }
 
   function loadFriends() {
@@ -348,13 +414,14 @@
             const chatId = getChatId(currentUser.uid, uid);
             const chatDoc = await getDoc(doc(db, "chats", chatId));
             const revealed = chatDoc.exists() && chatDoc.data().revealed;
+            const streak = chatDoc.exists() ? chatDoc.data().streak || 0 : 0;
             const displayName = revealed ? (user.displayName || user.username) : `hidden_${uid.slice(0,4)}`;
             const statusDot = user.showOnline && user.online ? '<div class="onlineDot"></div>' : '<div class="offlineDot"></div>';
             html += `<div class="userRow" onclick="openChat('${uid}','${user.username}')">
               <div class="userInfo">
                 <img class="profilePic" src="${user.picUrl || 'https://i.imgur.com/6VBx3io.png'}">
                 <div>
-                  <b>${revealed ? '@' : ''}${displayName}</b>
+                  <b>${revealed ? '@' : ''}${displayName} ${streak > 0 ? `<span class="streak">🔥${streak}</span>` : ''}</b>
                   <div class="lastSeen">${user.showOnline && user.online ? 'online' : (user.showLastSeen ? formatLastSeen(user.lastSeen) : '')}</div>
                 </div>
               ${statusDot}
@@ -480,10 +547,10 @@
       showOnline: showOnline,
       showLastSeen: showLastSeen
     });
+    document.getElementById('myProfilePic').src = picUrl;
     alert('Profile Updated! ✅');
   }
 
-  // Update last seen every 30 seconds
   setInterval(async () => {
     if (currentUser) {
       await updateDoc(doc(db, "users", currentUser.uid), { lastSeen: serverTimestamp() });
@@ -492,4 +559,6 @@
 </script>
 
 </body>
-</html>
+</html>     
+
+      
