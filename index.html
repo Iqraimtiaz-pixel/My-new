@@ -1,7 +1,7 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html>
 <head>
-  <title>VibeZ - Chat App</title>
+  <title>VibeZ - Anonymous to Friends</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; }
@@ -11,22 +11,28 @@
     input { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #333; background: #1f1f1f; color: white; font-size: 16px; }
     button { padding: 12px 16px; margin: 4px 0; border-radius: 12px; border: none; background: #7c3aed; color: white; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; }
     button:active { background: #6d28d9; }
-  .smallBtn { padding: 8px 12px; font-size: 13px; width: auto; margin: 0 4px; }
-  .greenBtn { background: #16a34a; }
-  .redBtn { background: #dc2626; }
-  .greyBtn { background: #4b5563; }
+   .smallBtn { padding: 8px 12px; font-size: 13px; width: auto; margin: 0 4px; }
+   .greenBtn { background: #16a34a; }
+   .redBtn { background: #dc2626; }
+   .greyBtn { background: #4b5563; }
+   .backBtn { background: #4b5563; width: auto; margin-bottom: 10px; }
     #tabs { display: flex; gap: 8px; margin-bottom: 10px; }
     #tabs button { flex: 1; }
-  .activeTab { background: #a855f7!important; }
-    #messages, #userList, #requestList { height: 50vh; overflow-y: scroll; border: 1px solid #333; border-radius: 12px; padding: 10px; margin-bottom: 10px; background: #181818; }
-  .msg,.userRow { margin: 8px 0; padding: 10px; background: #262626; border-radius: 10px; word-wrap: break-word; }
-  .msg b,.userRow b { color: #a855f7; }
-  .userRow { display: flex; justify-content: space-between; align-items: center; }
+   .activeTab { background: #a855f7!important; }
+    #messages, #userList, #requestList, #friendsList { height: 50vh; overflow-y: scroll; border: 1px solid #333; border-radius: 12px; padding: 10px; margin-bottom: 10px; background: #181818; }
+   .msg,.userRow { margin: 8px 0; padding: 10px; background: #262626; border-radius: 10px; word-wrap: break-word; }
+   .msg b { color: #a855f7; }
+   .msg .anon { color: #f59e0b; }
+   .msg .system { text-align: center; color: #16a34a; font-size: 13px; background: #1f2937; }
+   .userRow { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+   .userRow:hover { background: #333; }
     #logoutBtn { background: #dc2626; }
-  .hidden { display: none; }
-  .searchBox { display: flex; gap: 8px; margin-bottom: 10px; }
-  .searchBox input { margin: 0; }
-  .searchBox button { width: auto; margin: 0; }
+   .hidden { display: none; }
+   .searchBox { display: flex; gap: 8px; margin-bottom: 10px; }
+   .searchBox input { margin: 0; }
+   .searchBox button { width: auto; margin: 0; }
+   .chatHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+   .msgCount { font-size: 12px; color: #9ca3af; }
   </style>
 </head>
 <body>
@@ -46,16 +52,14 @@
     <p style="text-align:center; color:#9ca3af; margin:0 0 10px 0;">@<span id="myUsername"></span></p>
 
     <div id="tabs">
-      <button id="chatTab" onclick="showTab('chat')" class="activeTab">Chat</button>
+      <button id="friendsTab" onclick="showTab('friends')" class="activeTab">Friends</button>
       <button id="peopleTab" onclick="showTab('people')">Add Friend</button>
       <button id="reqTab" onclick="showTab('requests')">Requests <span id="reqCount"></span></button>
     </div>
 
-    <!-- CHAT TAB -->
-    <div id="chatDiv">
-      <div id="messages"></div>
-      <input id="msgInput" placeholder="Type a message...">
-      <button onclick="sendMsg()">Send</button>
+    <!-- FRIENDS TAB -->
+    <div id="friendsDiv">
+      <div id="friendsList"></div>
     </div>
 
     <!-- PEOPLE TAB -->
@@ -72,13 +76,25 @@
       <div id="requestList"></div>
     </div>
 
+    <!-- PRIVATE CHAT -->
+    <div id="chatDiv" class="hidden">
+      <button class="backBtn" onclick="closeChat()">← Back</button>
+      <div class="chatHeader">
+        <h3 id="chatWith"></h3>
+        <span class="msgCount" id="msgCount"></span>
+      </div>
+      <div id="messages"></div>
+      <input id="msgInput" placeholder="Type a message...">
+      <button onclick="sendMsg()">Send</button>
+    </div>
+
     <button id="logoutBtn" onclick="logout()">Logout</button>
   </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, where, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCOk009zNd4BMtS0ySPedwhNTwNMCc-CyI",
@@ -96,21 +112,20 @@
   const errorBox = document.getElementById('error');
   let currentUser = null;
   let currentUserData = null;
+  let currentChatId = null;
+  let currentChatUnsub = null;
+  let currentChatPartner = null;
 
   window.signup = async () => {
     const username = document.getElementById('username').value.trim().toLowerCase().replace('@', '');
     const email = document.getElementById('email').value;
     const pass = document.getElementById('pass').value;
     errorBox.innerText = '';
-
     if (!username) { errorBox.innerText = 'Username required'; return; }
     if (username.length < 3) { errorBox.innerText = 'Username min 3 letters'; return; }
-
-    // Check if username already exists
     const q = query(collection(db, "users"), where("username", "==", username));
     const snap = await getDocs(q);
     if (!snap.empty) { errorBox.innerText = 'Username already taken'; return; }
-
     try {
       const userCred = await createUserWithEmailAndPassword(auth, email, pass);
       await setDoc(doc(db, "users", userCred.user.uid), {
@@ -141,73 +156,162 @@
         document.getElementById('login').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
         document.getElementById('myUsername').innerText = currentUserData.username;
-        loadMsgs();
+        loadFriends();
         loadRequests();
       }
     } else {
       currentUser = null;
+      if (currentChatUnsub) currentChatUnsub();
       document.getElementById('login').classList.remove('hidden');
       document.getElementById('app').classList.add('hidden');
     }
   });
 
   window.showTab = (tab) => {
-    document.getElementById('chatDiv').classList.add('hidden');
+    closeChat();
+    document.getElementById('friendsDiv').classList.add('hidden');
     document.getElementById('peopleDiv').classList.add('hidden');
     document.getElementById('requestsDiv').classList.add('hidden');
-    document.getElementById('chatTab').classList.remove('activeTab');
+    document.getElementById('friendsTab').classList.remove('activeTab');
     document.getElementById('peopleTab').classList.remove('activeTab');
     document.getElementById('reqTab').classList.remove('activeTab');
     document.getElementById(tab + 'Div').classList.remove('hidden');
     document.getElementById(tab + 'Tab').classList.add('activeTab');
   }
 
-  window.sendMsg = async () => {
-    const text = document.getElementById('msgInput').value;
-    if (text.trim() && currentUser) {
-      await addDoc(collection(db, "messages"), {
-        text: text,
-        username: currentUserData.username,
-        time: serverTimestamp()
-      });
-      document.getElementById('msgInput').value = '';
-    }
+  function getChatId(uid1, uid2) {
+    return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
   }
 
-  function loadMsgs() {
-    const q = query(collection(db, "messages"), orderBy("time"));
-    onSnapshot(q, (snapshot) => {
+  window.openChat = async (friendUid, friendUsername) => {
+    currentChatPartner = { uid: friendUid, username: friendUsername };
+    currentChatId = getChatId(currentUser.uid, friendUid);
+    document.getElementById('friendsDiv').classList.add('hidden');
+    document.getElementById('peopleDiv').classList.add('hidden');
+    document.getElementById('requestsDiv').classList.add('hidden');
+    document.getElementById('tabs').classList.add('hidden');
+    document.getElementById('chatDiv').classList.remove('hidden');
+
+    const chatDoc = await getDoc(doc(db, "chats", currentChatId));
+    let revealed = chatDoc.exists() && chatDoc.data().revealed;
+    let totalMsgs = chatDoc.exists() ? chatDoc.data().totalMsgs || 0 : 0;
+
+    document.getElementById('chatWith').innerHTML = revealed ? `@${friendUsername}` : `<span class="anon">@hidden_${friendUid.slice(0,4)}</span>`;
+    document.getElementById('msgCount').innerText = `${totalMsgs}/50 msgs`;
+
+    if (currentChatUnsub) currentChatUnsub();
+    const q = query(collection(db, "chats", currentChatId, "messages"), orderBy("time"));
+    currentChatUnsub = onSnapshot(q, (snapshot) => {
       let html = '';
+      let count = 0;
+      const now = Timestamp.now();
       snapshot.forEach((doc) => {
         const msg = doc.data();
-        html += `<div class="msg"><b>@${msg.username}:</b> ${msg.text}</div>`;
+        // Vanish logic: 24 hours
+        if (now.seconds - msg.time.seconds > 86400) return;
+        count++;
+        if (msg.type === 'system') {
+          html += `<div class="msg system">${msg.text}</div>`;
+        } else {
+          const name = revealed ? `@${msg.username}` : `<span class="anon">@hidden_${msg.uid.slice(0,4)}</span>`;
+          html += `<div class="msg"><b>${name}:</b> ${msg.text}</div>`;
+        }
       });
-      const msgDiv = document.getElementById('messages');
-      msgDiv.innerHTML = html;
-      msgDiv.scrollTop = msgDiv.scrollHeight;
+      document.getElementById('messages').innerHTML = html;
+      document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    });
+  }
+
+  window.closeChat = () => {
+    if (currentChatUnsub) currentChatUnsub();
+    currentChatId = null;
+    currentChatPartner = null;
+    document.getElementById('chatDiv').classList.add('hidden');
+    document.getElementById('tabs').classList.remove('hidden');
+    document.getElementById('friendsDiv').classList.remove('hidden');
+  }
+
+  window.sendMsg = async () => {
+    const text = document.getElementById('msgInput').value.trim();
+    if (!text || !currentChatId) return;
+    document.getElementById('msgInput').value = '';
+
+    const chatRef = doc(db, "chats", currentChatId);
+    const chatDoc = await getDoc(chatRef);
+    let totalMsgs = 0;
+    let revealed = false;
+    if (!chatDoc.exists()) {
+      await setDoc(chatRef, { totalMsgs: 0, revealed: false, users: [currentUser.uid, currentChatPartner.uid] });
+    } else {
+      totalMsgs = chatDoc.data().totalMsgs || 0;
+      revealed = chatDoc.data().revealed || false;
+    }
+
+    totalMsgs++;
+    await updateDoc(chatRef, { totalMsgs: totalMsgs });
+
+    await addDoc(collection(db, "chats", currentChatId, "messages"), {
+      text: text,
+      username: currentUserData.username,
+      uid: currentUser.uid,
+      time: serverTimestamp(),
+      type: 'user'
+    });
+
+    // Reveal at 50 messages
+    if (totalMsgs === 50 && !revealed) {
+      await updateDoc(chatRef, { revealed: true });
+      await addDoc(collection(db, "chats", currentChatId, "messages"), {
+        text: `🎉 ID Revealed! You are now chatting with @${currentUserData.username} & @${currentChatPartner.username}`,
+        time: serverTimestamp(),
+        type: 'system'
+      });
+      document.getElementById('chatWith').innerHTML = `@${currentChatPartner.username}`;
+    }
+    document.getElementById('msgCount').innerText = `${totalMsgs}/50 msgs`;
+  }
+
+  function loadFriends() {
+    onSnapshot(doc(db, "users", currentUser.uid), async (docSnap) => {
+      if (docSnap.exists()) {
+        currentUserData = docSnap.data();
+        const friends = currentUserData.friends || [];
+        if (friends.length === 0) {
+          document.getElementById('friendsList').innerHTML = '<p style="text-align:center;color:#6b7280">No friends yet. Add some!</p>';
+          return;
+        }
+        let html = '';
+        for (const uid of friends) {
+          const userDoc = await getDoc(doc(db, "users", uid));
+          if (userDoc.exists()) {
+            const user = userDoc.data();
+            const chatId = getChatId(currentUser.uid, uid);
+            const chatDoc = await getDoc(doc(db, "chats", chatId));
+            const revealed = chatDoc.exists() && chatDoc.data().revealed;
+            const displayName = revealed ? `@${user.username}` : `<span class="anon">@hidden_${uid.slice(0,4)}</span>`;
+            html += `<div class="userRow" onclick="openChat('${uid}','${user.username}')"><b>${displayName}</b> <span style="color:#6b7280;font-size:13px">tap to chat</span></div>`;
+          }
+        }
+        document.getElementById('friendsList').innerHTML = html;
+      }
     });
   }
 
   window.searchUser = async () => {
     const search = document.getElementById('searchUser').value.trim().toLowerCase().replace('@', '');
     if (!search) return;
-
     const userList = document.getElementById('userList');
     userList.innerHTML = '<p style="text-align:center;color:#6b7280">Searching...</p>';
-
-    // Search by username OR email
     let q = query(collection(db, "users"), where("username", "==", search));
     let snap = await getDocs(q);
     if (snap.empty) {
       q = query(collection(db, "users"), where("email", "==", search));
       snap = await getDocs(q);
     }
-
     if (snap.empty) {
       userList.innerHTML = '<p style="text-align:center;color:#f87171">User not found</p>';
       return;
     }
-
     let html = '';
     snap.forEach((doc) => {
       const user = doc.data();
@@ -232,7 +336,7 @@
     await updateDoc(doc(db, "users", targetUid), {
       requests: arrayUnion(currentUser.uid)
     });
-    searchUser(); // refresh
+    searchUser();
   }
 
   function loadRequests() {
@@ -282,4 +386,7 @@
 </script>
 
 </body>
-</html>
+</html> 
+
+    
+    
