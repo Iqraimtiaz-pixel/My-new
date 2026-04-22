@@ -1,26 +1,39 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
-  <title>VibeZ - Real Chat App</title>
+  <title>VibeZ - Chat App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; }
     body { font-family: -apple-system, sans-serif; margin: 0; background: #0f0f0f; color: white; }
-    #login, #chat { max-width: 400px; margin: 40px auto; padding: 20px; }
-    h2 { text-align: center; color: #a855f7; }
+    #login, #app { max-width: 450px; margin: 20px auto; padding: 15px; }
+    h2 { text-align: center; color: #a855f7; margin: 10px 0; }
     input { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #333; background: #1f1f1f; color: white; font-size: 16px; }
-    button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: none; background: #7c3aed; color: white; font-weight: bold; font-size: 16px; }
+    button { padding: 12px 16px; margin: 4px 0; border-radius: 12px; border: none; background: #7c3aed; color: white; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; }
     button:active { background: #6d28d9; }
-    #messages { height: 60vh; overflow-y: scroll; border: 1px solid #333; border-radius: 12px; padding: 10px; margin-bottom: 10px; background: #181818; }
-   .msg { margin: 8px 0; padding: 10px; background: #262626; border-radius: 10px; word-wrap: break-word; }
-   .msg b { color: #a855f7; }
+  .smallBtn { padding: 8px 12px; font-size: 13px; width: auto; margin: 0 4px; }
+  .greenBtn { background: #16a34a; }
+  .redBtn { background: #dc2626; }
+  .greyBtn { background: #4b5563; }
+    #tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+    #tabs button { flex: 1; }
+  .activeTab { background: #a855f7!important; }
+    #messages, #userList, #requestList { height: 50vh; overflow-y: scroll; border: 1px solid #333; border-radius: 12px; padding: 10px; margin-bottom: 10px; background: #181818; }
+  .msg,.userRow { margin: 8px 0; padding: 10px; background: #262626; border-radius: 10px; word-wrap: break-word; }
+  .msg b,.userRow b { color: #a855f7; }
+  .userRow { display: flex; justify-content: space-between; align-items: center; }
     #logoutBtn { background: #dc2626; }
+  .hidden { display: none; }
+  .searchBox { display: flex; gap: 8px; margin-bottom: 10px; }
+  .searchBox input { margin: 0; }
+  .searchBox button { width: auto; margin: 0; }
   </style>
 </head>
 <body>
 
   <div id="login">
     <h2>VibeZ Login 💜</h2>
+    <input id="username" type="text" placeholder="Choose Username: @iqra123">
     <input id="email" type="email" placeholder="Enter Email">
     <input id="pass" type="password" placeholder="Enter Password">
     <button onclick="signup()">Create New Account</button>
@@ -28,18 +41,44 @@
     <p id="error" style="color:#f87171; text-align:center;"></p>
   </div>
 
-  <div id="chat" style="display:none">
-    <h2>VibeZ Chat 🚀</h2>
-    <div id="messages"></div>
-    <input id="msgInput" placeholder="Type a message...">
-    <button onclick="sendMsg()">Send</button>
+  <div id="app" class="hidden">
+    <h2>VibeZ 🚀</h2>
+    <p style="text-align:center; color:#9ca3af; margin:0 0 10px 0;">@<span id="myUsername"></span></p>
+
+    <div id="tabs">
+      <button id="chatTab" onclick="showTab('chat')" class="activeTab">Chat</button>
+      <button id="peopleTab" onclick="showTab('people')">Add Friend</button>
+      <button id="reqTab" onclick="showTab('requests')">Requests <span id="reqCount"></span></button>
+    </div>
+
+    <!-- CHAT TAB -->
+    <div id="chatDiv">
+      <div id="messages"></div>
+      <input id="msgInput" placeholder="Type a message...">
+      <button onclick="sendMsg()">Send</button>
+    </div>
+
+    <!-- PEOPLE TAB -->
+    <div id="peopleDiv" class="hidden">
+      <div class="searchBox">
+        <input id="searchUser" placeholder="Search by @username or email">
+        <button onclick="searchUser()">Search</button>
+      </div>
+      <div id="userList"><p style="text-align:center;color:#6b7280">Search user to add friend</p></div>
+    </div>
+
+    <!-- REQUESTS TAB -->
+    <div id="requestsDiv" class="hidden">
+      <div id="requestList"></div>
+    </div>
+
     <button id="logoutBtn" onclick="logout()">Logout</button>
   </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCOk009zNd4BMtS0ySPedwhNTwNMCc-CyI",
@@ -55,45 +94,192 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
   const errorBox = document.getElementById('error');
+  let currentUser = null;
+  let currentUserData = null;
 
-  window.signup = () => {
+  window.signup = async () => {
+    const username = document.getElementById('username').value.trim().toLowerCase().replace('@', '');
     const email = document.getElementById('email').value;
     const pass = document.getElementById('pass').value;
     errorBox.innerText = '';
-    createUserWithEmailAndPassword(auth, email, pass)
-    .catch((e) => errorBox.innerText = e.message);
+
+    if (!username) { errorBox.innerText = 'Username required'; return; }
+    if (username.length < 3) { errorBox.innerText = 'Username min 3 letters'; return; }
+
+    // Check if username already exists
+    const q = query(collection(db, "users"), where("username", "==", username));
+    const snap = await getDocs(q);
+    if (!snap.empty) { errorBox.innerText = 'Username already taken'; return; }
+
+    try {
+      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+      await setDoc(doc(db, "users", userCred.user.uid), {
+        email: email,
+        username: username,
+        uid: userCred.user.uid,
+        friends: [],
+        requests: []
+      });
+    } catch (e) { errorBox.innerText = e.message; }
   }
 
   window.login = () => {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('pass').value;
     errorBox.innerText = '';
-    signInWithEmailAndPassword(auth, email, pass)
-    .catch((e) => errorBox.innerText = e.message);
+    signInWithEmailAndPassword(auth, email, pass).catch((e) => errorBox.innerText = e.message);
   }
 
   window.logout = () => signOut(auth);
 
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     if (user) {
-      document.getElementById('login').style.display = 'none';
-      document.getElementById('chat').style.display = 'block';
-      loadMsgs();
+      currentUser = user;
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        currentUserData = userDoc.data();
+        document.getElementById('login').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        document.getElementById('myUsername').innerText = currentUserData.username;
+        loadMsgs();
+        loadRequests();
+      }
     } else {
-      document.getElementById('login').style.display = 'block';
-      document.getElementById('chat').style.display = 'none';
+      currentUser = null;
+      document.getElementById('login').classList.remove('hidden');
+      document.getElementById('app').classList.add('hidden');
     }
   });
 
+  window.showTab = (tab) => {
+    document.getElementById('chatDiv').classList.add('hidden');
+    document.getElementById('peopleDiv').classList.add('hidden');
+    document.getElementById('requestsDiv').classList.add('hidden');
+    document.getElementById('chatTab').classList.remove('activeTab');
+    document.getElementById('peopleTab').classList.remove('activeTab');
+    document.getElementById('reqTab').classList.remove('activeTab');
+    document.getElementById(tab + 'Div').classList.remove('hidden');
+    document.getElementById(tab + 'Tab').classList.add('activeTab');
+  }
+
   window.sendMsg = async () => {
     const text = document.getElementById('msgInput').value;
-    const user = auth.currentUser;
-    if (text.trim() && user) {
+    if (text.trim() && currentUser) {
       await addDoc(collection(db, "messages"), {
         text: text,
-        email: user.email,
+        username: currentUserData.username,
         time: serverTimestamp()
       });
-      document.getElementById('msgInput').
+      document.getElementById('msgInput').value = '';
+    }
+  }
 
- 
+  function loadMsgs() {
+    const q = query(collection(db, "messages"), orderBy("time"));
+    onSnapshot(q, (snapshot) => {
+      let html = '';
+      snapshot.forEach((doc) => {
+        const msg = doc.data();
+        html += `<div class="msg"><b>@${msg.username}:</b> ${msg.text}</div>`;
+      });
+      const msgDiv = document.getElementById('messages');
+      msgDiv.innerHTML = html;
+      msgDiv.scrollTop = msgDiv.scrollHeight;
+    });
+  }
+
+  window.searchUser = async () => {
+    const search = document.getElementById('searchUser').value.trim().toLowerCase().replace('@', '');
+    if (!search) return;
+
+    const userList = document.getElementById('userList');
+    userList.innerHTML = '<p style="text-align:center;color:#6b7280">Searching...</p>';
+
+    // Search by username OR email
+    let q = query(collection(db, "users"), where("username", "==", search));
+    let snap = await getDocs(q);
+    if (snap.empty) {
+      q = query(collection(db, "users"), where("email", "==", search));
+      snap = await getDocs(q);
+    }
+
+    if (snap.empty) {
+      userList.innerHTML = '<p style="text-align:center;color:#f87171">User not found</p>';
+      return;
+    }
+
+    let html = '';
+    snap.forEach((doc) => {
+      const user = doc.data();
+      if (user.uid !== currentUser.uid) {
+        const isFriend = currentUserData.friends?.includes(user.uid);
+        const reqSent = user.requests?.includes(currentUser.uid);
+        let btn = '';
+        if (isFriend) {
+          btn = `<span style="color:#16a34a">✓ Friends</span>`;
+        } else if (reqSent) {
+          btn = `<button class="smallBtn greyBtn" disabled>Request Sent</button>`;
+        } else {
+          btn = `<button class="smallBtn" onclick="sendRequest('${user.uid}')">Add Friend</button>`;
+        }
+        html += `<div class="userRow"><b>@${user.username}</b> ${btn}</div>`;
+      }
+    });
+    userList.innerHTML = html || '<p style="text-align:center;color:#f87171">Cannot add yourself</p>';
+  }
+
+  window.sendRequest = async (targetUid) => {
+    await updateDoc(doc(db, "users", targetUid), {
+      requests: arrayUnion(currentUser.uid)
+    });
+    searchUser(); // refresh
+  }
+
+  function loadRequests() {
+    onSnapshot(doc(db, "users", currentUser.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        currentUserData = docSnap.data();
+        const reqs = currentUserData.requests || [];
+        document.getElementById('reqCount').innerText = reqs.length > 0? `(${reqs.length})` : '';
+        if (reqs.length === 0) {
+          document.getElementById('requestList').innerHTML = '<p style="text-align:center;color:#6b7280">No friend requests</p>';
+          return;
+        }
+        let html = '';
+        reqs.forEach(async (uid) => {
+          const userDoc = await getDoc(doc(db, "users", uid));
+          if (userDoc.exists()) {
+            const user = userDoc.data();
+            html += `<div class="userRow">
+              <b>@${user.username}</b>
+              <div>
+                <button class="smallBtn greenBtn" onclick="acceptRequest('${uid}')">Accept</button>
+                <button class="smallBtn redBtn" onclick="ignoreRequest('${uid}')">Ignore</button>
+              </div>
+            </div>`;
+            document.getElementById('requestList').innerHTML = html;
+          }
+        });
+      }
+    });
+  }
+
+  window.acceptRequest = async (fromUid) => {
+    await updateDoc(doc(db, "users", currentUser.uid), {
+      friends: arrayUnion(fromUid),
+      requests: arrayRemove(fromUid)
+    });
+    await updateDoc(doc(db, "users", fromUid), {
+      friends: arrayUnion(currentUser.uid)
+    });
+  }
+
+  window.ignoreRequest = async (fromUid) => {
+    await updateDoc(doc(db, "users", currentUser.uid), {
+      requests: arrayRemove(fromUid)
+    });
+  }
+</script>
+
+</body>
+</html>
