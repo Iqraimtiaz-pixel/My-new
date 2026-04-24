@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <title>VibeZ - Anonymous to Friends</title>
@@ -52,7 +52,6 @@
    .inputRow input { margin: 0; }
    .inputRow button { width: auto; margin: 0; padding: 14px; }
    .emojiBtn { font-size: 20px; background: #262626; }
-   /* NEW: DP Modal WhatsApp Style */
    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 999; }
    .modalContent { text-align: center; }
    .modalContent img { max-width: 90%; max-height: 70vh; border-radius: 12px; }
@@ -83,12 +82,10 @@
       <button id="profileTab" onclick="showTab('profile')">Profile</button>
     </div>
 
-    <!-- FRIENDS TAB -->
     <div id="friendsDiv">
       <div id="friendsList"></div>
     </div>
 
-    <!-- PEOPLE TAB -->
     <div id="peopleDiv" class="hidden">
       <div class="searchBox">
         <input id="searchUser" placeholder="Search by @username or email">
@@ -97,12 +94,10 @@
       <div id="userList"><p style="text-align:center;color:#6b7280">Search user to add friend</p></div>
     </div>
 
-    <!-- REQUESTS TAB -->
     <div id="requestsDiv" class="hidden">
       <div id="requestList"></div>
     </div>
 
-    <!-- PROFILE TAB -->
     <div id="profileDiv" class="hidden">
       <div style="text-align:center;margin-bottom:15px;">
         <img id="myProfilePic" class="profilePic" style="width:80px;height:80px;" src="https://i.imgur.com/6VBx3io.png" onclick="openDpModal()">
@@ -114,4 +109,214 @@
       </div>
       <div class="settingRow">
         <span>Profile Pic URL</span>
-        <input id="picUrl" style="width: 60%; margin: 0; padding: 8
+        <input id="picUrl" style="width: 60%; margin: 0; padding: 8px;" placeholder="Imgur link paste karo">
+      </div>
+      <div class="settingRow">
+        <span>Show Online Status</span>
+        <div id="onlineToggle" class="toggle on" onclick="toggleOnline()"><div class="toggleBall"></div></div>
+      </div>
+      <div class="settingRow">
+        <span>Show Last Seen</span>
+        <div id="lastSeenToggle" class="toggle on" onclick="toggleLastSeen()"><div class="toggleBall"></div></div>
+      </div>
+      <button onclick="saveProfile()">Save Profile</button>
+    </div>
+
+    <div id="chatDiv" class="hidden">
+      <button class="backBtn" onclick="closeChat()">← Back</button>
+      <div class="chatHeader">
+        <div class="userInfo">
+          <img id="chatPic" class="profilePic" src="https://i.imgur.com/6VBx3io.png">
+          <div>
+            <h3 id="chatWith" style="margin:0;"></h3>
+            <div id="chatStatus" class="lastSeen"></div>
+          </div>
+        </div>
+        <span class="msgCount" id="msgCount"></span>
+      </div>
+      <div class="progressBar"><div id="progressFill" class="progressFill" style="width:0%"></div></div>
+      <div id="messages"></div>
+      <div class="inputRow">
+        <button class="emojiBtn" onclick="addEmoji()">😊</button>
+        <input id="msgInput" placeholder="Type or paste Imgur link for pic...">
+        <button onclick="sendMsg()">Send</button>
+      </div>
+    </div>
+
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+  </div>
+
+  <div id="dpModal" class="modal" onclick="closeDpModal()">
+    <div class="modalContent" onclick="event.stopPropagation()">
+      <img id="modalDpImg" src="">
+      <div class="modalBtns">
+        <button class="greenBtn" onclick="changeDp()">Change Photo</button>
+        <button class="redBtn" onclick="removeDp()">Remove Photo</button>
+        <button class="greyBtn" onclick="closeDpModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, where, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCOk009zNd4BMtS0ySPedwhNTwNMCc-CyI",
+    authDomain: "vibez-6ed71.firebaseapp.com",
+    projectId: "vibez-6ed71",
+    storageBucket: "vibez-6ed71.firebasestorage.app",
+    messagingSenderId: "524036069373",
+    appId: "1:524036069373:web:db9006783b42f1b5852b94",
+    measurementId: "G-SHVC4TZVYL"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  
+  // FIX 1: AUTO-LOGIN - FIREBASE KO YAAD RAKHNE KA BOLO 👑
+  await setPersistence(auth, browserLocalPersistence);
+  
+  const errorBox = document.getElementById('error');
+  let currentUser = null;
+  let currentUserData = null;
+  let currentChatId = null;
+  let currentChatUnsub = null;
+  let currentChatPartner = null;
+
+  const emojis = ['😂','😭','💜','🔥','👑','😍','🥰','😎','🫂','✨','🚀','✅','🤣','😊','🙄','😘'];
+  
+  window.addEmoji = () => {
+    const e = emojis[Math.floor(Math.random() * emojis.length)];
+    document.getElementById('msgInput').value += e;
+  }
+
+  window.openDpModal = () => {
+    document.getElementById('modalDpImg').src = document.getElementById('myProfilePic').src;
+    document.getElementById('dpModal').style.display = 'flex';
+  }
+  
+  window.closeDpModal = () => {
+    document.getElementById('dpModal').style.display = 'none';
+  }
+  
+  window.changeDp = () => {
+    const newUrl = prompt("New Imgur URL paste karo:");
+    if (newUrl) {
+      document.getElementById('picUrl').value = newUrl;
+      document.getElementById('myProfilePic').src = newUrl;
+      document.getElementById('modalDpImg').src = newUrl;
+      saveProfile();
+    }
+    closeDpModal();
+  }
+  
+  window.removeDp = () => {
+    const defaultPic = 'https://i.imgur.com/6VBx3io.png';
+    document.getElementById('picUrl').value = defaultPic;
+    document.getElementById('myProfilePic').src = defaultPic;
+    saveProfile();
+    closeDpModal();
+  }
+
+  // FIX 2: SIGNUP WITH RETRY LOGIC 🚀
+  window.signup = async (retries = 3) => {
+    const username = document.getElementById('username').value.trim().toLowerCase().replace('@', '');
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('pass').value;
+    errorBox.innerText = '';
+    
+    if (!username) { errorBox.innerText = 'Username required'; return; }
+    if (username.length < 3) { errorBox.innerText = 'Username min 3 letters'; return; }
+    
+    try {
+      errorBox.innerText = 'Checking username...';
+      const q = query(collection(db, "users"), where("username", "==", username));
+      const snap = await getDocs(q);
+      if (!snap.empty) { errorBox.innerText = 'Username already taken'; return; }
+      
+      errorBox.innerText = 'Creating account...';
+      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+      await setDoc(doc(db, "users", userCred.user.uid), {
+        email: email,
+        username: username,
+        displayName: username,
+        picUrl: 'https://i.imgur.com/6VBx3io.png',
+        uid: userCred.user.uid,
+        friends: [],
+        requests: [],
+        online: true,
+        showOnline: true,
+        showLastSeen: true,
+        lastSeen: serverTimestamp()
+      });
+      errorBox.innerText = '';
+    } catch (e) { 
+      if (retries > 0 && (e.code === 'auth/network-request-failed' || e.message.includes('network'))) {
+        errorBox.innerText = `Network error, retrying... ${retries} tries left`;
+        await new Promise(res => setTimeout(res, 1500));
+        return signup(retries - 1);
+      }
+      errorBox.innerText = e.message; 
+    }
+  }
+
+  window.login = () => {
+    const email = document.getElementById('email').value;
+    const pass = document.getElementById('pass').value;
+    errorBox.innerText = '';
+    signInWithEmailAndPassword(auth, email, pass).catch((e) => errorBox.innerText = e.message);
+  }
+
+  window.logout = async () => {
+    if (currentUser) {
+      await updateDoc(doc(db, "users", currentUser.uid), { online: false, lastSeen: serverTimestamp() });
+    }
+    signOut(auth);
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      await updateDoc(doc(db, "users", user.uid), { online: true });
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        currentUserData = userDoc.data();
+        document.getElementById('login').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        document.getElementById('myUsername').innerText = currentUserData.username;
+        document.getElementById('displayName').value = currentUserData.displayName || currentUserData.username;
+        document.getElementById('picUrl').value = currentUserData.picUrl || '';
+        document.getElementById('myProfilePic').src = currentUserData.picUrl || 'https://i.imgur.com/6VBx3io.png';
+        if (!currentUserData.showOnline) document.getElementById('onlineToggle').classList.remove('on');
+        if (!currentUserData.showLastSeen) document.getElementById('lastSeenToggle').classList.remove('on');
+        loadFriends();
+        loadRequests();
+      }
+    } else {
+      if (currentUser) await updateDoc(doc(db, "users", currentUser.uid), { online: false, lastSeen: serverTimestamp() });
+      currentUser = null;
+      if (currentChatUnsub) currentChatUnsub();
+      document.getElementById('login').classList.remove('hidden');
+      document.getElementById('app').classList.add('hidden');
+    }
+  });
+
+  window.showTab = (tab) => {
+    closeChat();
+    document.getElementById('friendsDiv').classList.add('hidden');
+    document.getElementById('peopleDiv').classList.add('hidden');
+    document.getElementById('requestsDiv').classList.add('hidden');
+    document.getElementById('profileDiv').classList.add('hidden');
+    document.getElementById('friendsTab').classList.remove('activeTab');
+    document.getElementById('peopleTab').classList.remove('activeTab');
+    document.getElementById('reqTab').classList.remove('activeTab');
+    document.getElementById('profileTab').classList.remove('activeTab');
+    document.getElementById(tab + 'Div').classList.remove('hidden');
+    document.getElementById(tab + 'Tab').classList.add('activeTab');
+  }
+</script>
+</body>
+</html>
