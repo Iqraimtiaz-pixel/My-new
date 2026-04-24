@@ -176,7 +176,7 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
   
-  // FIX 1: AUTO-LOGIN - FIREBASE KO YAAD RAKHNE KA BOLO 👑
+  // FIX 1: AUTO-LOGIN ENABLED 👑
   await setPersistence(auth, browserLocalPersistence);
   
   const errorBox = document.getElementById('error');
@@ -221,7 +221,7 @@
     closeDpModal();
   }
 
-  // FIX 2: SIGNUP WITH RETRY LOGIC 🚀
+  // FIX 2: SIGNUP WITH RETRY 🚀
   window.signup = async (retries = 3) => {
     const username = document.getElementById('username').value.trim().toLowerCase().replace('@', '');
     const email = document.getElementById('email').value;
@@ -316,6 +316,192 @@
     document.getElementById('profileTab').classList.remove('activeTab');
     document.getElementById(tab + 'Div').classList.remove('hidden');
     document.getElementById(tab + 'Tab').classList.add('activeTab');
+    
+    // Tab open hote hi data load karo
+    if (tab === 'friends') loadFriends();
+    if (tab === 'requests') loadRequests();
+  }
+
+  // NEW: FRIENDS LIST LOAD KARO 👑
+  window.loadFriends = async () => {
+    if (!currentUserData) return;
+    const friendsDiv = document.getElementById('friendsList');
+    friendsDiv.innerHTML = '<p style="text-align:center;color:#6b7280">Loading...</p>';
+    
+    if (!currentUserData.friends || currentUserData.friends.length === 0) {
+      friendsDiv.innerHTML = '<p style="text-align:center;color:#6b7280">No friends yet. Go to Add tab!</p>';
+      return;
+    }
+    
+    let html = '';
+    for (const friendId of currentUserData.friends) {
+      const friendDoc = await getDoc(doc(db, "users", friendId));
+      if (friendDoc.exists()) {
+        const f = friendDoc.data();
+        html += `<div class="userRow" onclick="openChat('${f.uid}','${f.username}','${f.picUrl}')">
+          <div class="userInfo">
+            <img class="profilePic" src="${f.picUrl}">
+            <span>@${f.username}</span>
+            ${f.online ? '<div class="onlineDot"></div>' : '<div class="offlineDot"></div>'}
+          </div>
+        </div>`;
+      }
+    }
+    friendsDiv.innerHTML = html || '<p style="text-align:center;color:#6b7280">No friends</p>';
+  }
+
+  // NEW: REQUESTS LOAD KARO 🚀
+  window.loadRequests = async () => {
+    if (!currentUserData) return;
+    const reqDiv = document.getElementById('requestList');
+    reqDiv.innerHTML = '<p style="text-align:center;color:#6b7280">Loading...</p>';
+    
+    if (!currentUserData.requests || currentUserData.requests.length === 0) {
+      reqDiv.innerHTML = '<p style="text-align:center;color:#6b7280">No requests</p>';
+      document.getElementById('reqNotif').classList.add('hidden');
+      return;
+    }
+    
+    document.getElementById('reqNotif').classList.remove('hidden');
+    document.getElementById('reqNotif').innerText = currentUserData.requests.length;
+    
+    let html = '';
+    for (const reqId of currentUserData.requests) {
+      const reqDoc = await getDoc(doc(db, "users", reqId));
+      if (reqDoc.exists()) {
+        const r = reqDoc.data();
+        html += `<div class="userRow">
+          <div class="userInfo">
+            <img class="profilePic" src="${r.picUrl}">
+            <span>@${r.username}</span>
+          </div>
+          <div>
+            <button class="smallBtn greenBtn" onclick="acceptRequest('${r.uid}')">Accept</button>
+            <button class="smallBtn redBtn" onclick="rejectRequest('${r.uid}')">Reject</button>
+          </div>
+        </div>`;
+      }
+    }
+    reqDiv.innerHTML = html;
+  }
+
+  // NEW: USER SEARCH KARO 💜
+  window.searchUser = async () => {
+    const search = document.getElementById('searchUser').value.trim().toLowerCase().replace('@','');
+    if (!search) return;
+    const userList = document.getElementById('userList');
+    userList.innerHTML = '<p>Searching...</p>';
+    
+    const q = query(collection(db, "users"), where("username", "==", search));
+    const snap = await getDocs(q);
+    
+    if (snap.empty) {
+      userList.innerHTML = '<p style="text-align:center;color:#6b7280">User not found</p>';
+      return;
+    }
+    
+    let html = '';
+    snap.forEach((docu) => {
+      const u = docu.data();
+      if (u.uid !== currentUser.uid) {
+        const isFriend = currentUserData.friends && currentUserData.friends.includes(u.uid);
+        const isRequested = u.requests && u.requests.includes(currentUser.uid);
+        html += `<div class="userRow">
+          <div class="userInfo">
+            <img class="profilePic" src="${u.picUrl}">
+            <span>@${u.username}</span>
+          </div>
+          ${isFriend ? '<span style="color:#16a34a">Friends ✅</span>' : 
+            isRequested ? '<span style="color:#f59e0b">Requested</span>' :
+            `<button class="smallBtn" onclick="sendRequest('${u.uid}')">Add Friend</button>`}
+        </div>`;
+      }
+    });
+    userList.innerHTML = html || '<p>That is you 😂</p>';
+  }
+
+  // NEW: FRIEND REQUEST BHEJO 🚀
+  window.sendRequest = async (toUid) => {
+    await updateDoc(doc(db, "users", toUid), {
+      requests: arrayUnion(currentUser.uid)
+    });
+    alert('Friend request sent! ✅');
+    searchUser();
+  }
+
+  // NEW: REQUEST ACCEPT KARO 💜
+  window.acceptRequest = async (fromUid) => {
+    await updateDoc(doc(db, "users", currentUser.uid), {
+      friends: arrayUnion(fromUid),
+      requests: arrayRemove(fromUid)
+    });
+    await updateDoc(doc(db, "users", fromUid), {
+      friends: arrayUnion(currentUser.uid)
+    });
+    // Update local data
+    currentUserData.friends = currentUserData.friends || [];
+    currentUserData.friends.push(fromUid);
+    currentUserData.requests = currentUserData.requests.filter(id => id !== fromUid);
+    loadRequests();
+    alert('Friend added! 🎉');
+  }
+
+  // NEW: REQUEST REJECT KARO
+  window.rejectRequest = async (fromUid) => {
+    await updateDoc(doc(db, "users", currentUser.uid), {
+      requests: arrayRemove(fromUid)
+    });
+    currentUserData.requests = currentUserData.requests.filter(id => id !== fromUid);
+    loadRequests();
+  }
+
+  // NEW: PROFILE SAVE KARO 👑
+  window.saveProfile = async () => {
+    const displayName = document.getElementById('displayName').value;
+    const picUrl = document.getElementById('picUrl').value;
+    await updateDoc(doc(db, "users", currentUser.uid), {
+      displayName: displayName,
+      picUrl: picUrl
+    });
+    currentUserData.displayName = displayName;
+    currentUserData.picUrl = picUrl;
+    alert('Profile saved! ✅');
+  }
+
+  // NEW: ONLINE TOGGLE
+  window.toggleOnline = async () => {
+    const toggle = document.getElementById('onlineToggle');
+    toggle.classList.toggle('on');
+    const show = toggle.classList.contains('on');
+    await updateDoc(doc(db, "users", currentUser.uid), { showOnline: show });
+    currentUserData.showOnline = show;
+  }
+
+  // NEW: LAST SEEN TOGGLE
+  window.toggleLastSeen = async () => {
+    const toggle = document.getElementById('lastSeenToggle');
+    toggle.classList.toggle('on');
+    const show = toggle.classList.contains('on');
+    await updateDoc(doc(db, "users", currentUser.uid), { showLastSeen: show });
+    currentUserData.showLastSeen = show;
+  }
+
+  // NEW: CHAT FUNCTIONS
+  window.openChat = (uid, username, picUrl) => {
+    document.getElementById('friendsDiv').classList.add('hidden');
+    document.getElementById('chatDiv').classList.remove('hidden');
+    document.getElementById('chatWith').innerText = '@' + username;
+    document.getElementById('chatPic').src = picUrl;
+    // Yahan chat load karne ka code baad mein daal denge
+  }
+
+  window.closeChat = () => {
+    document.getElementById('chatDiv').classList.add('hidden');
+    document.getElementById('friendsDiv').classList.remove('hidden');
+  }
+
+  window.sendMsg = () => {
+    alert('Chat feature next update mein 😂💜');
   }
 </script>
 </body>
