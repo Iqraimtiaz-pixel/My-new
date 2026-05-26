@@ -1,508 +1,1043 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>VibeZ - Anonymous to Friends</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, sans-serif; margin: 0; background: #0f0f0f; color: white; }
-    #login, #app { max-width: 450px; margin: 20px auto; padding: 15px; }
-    h2 { text-align: center; color: #a855f7; margin: 10px 0; }
-    input, select { width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #333; background: #1f1f1f; color: white; font-size: 16px; }
-    button { padding: 12px 16px; margin: 4px 0; border-radius: 12px; border: none; background: #7c3aed; color: white; font-weight: bold; font-size: 15px; cursor: pointer; width: 100%; }
-    button:active { background: #6d28d9; }
-   .smallBtn { padding: 8px 12px; font-size: 13px; width: auto; margin: 0 4px; }
-   .greenBtn { background: #16a34a; }
-   .redBtn { background: #dc2626; }
-   .greyBtn { background: #4b5563; }
-   .backBtn { background: #4b5563; width: auto; margin-bottom: 10px; }
-    #tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-    #tabs button { flex: 1; font-size: 13px; position: relative; }
-   .activeTab { background: #a855f7!important; }
-   .notifDot { position: absolute; top: 4px; right: 8px; background: #dc2626; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; line-height: 18px; }
-    #messages, #userList, #requestList, #friendsList { height: 42vh; overflow-y: scroll; border: 1px solid #333; border-radius: 12px; padding: 10px; margin-bottom: 10px; background: #181818; }
-   .msg,.userRow { margin: 8px 0; padding: 10px; background: #262626; border-radius: 10px; word-wrap: break-word; }
-   .msg b { color: #a855f7; }
-   .msg .anon { color: #f59e0b; }
-   .msg .system { text-align: center; color: #16a34a; font-size: 13px; background: #1f2937; }
-   .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
-   .userRow { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-   .userRow:hover { background: #333; }
-   .profilePic { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; margin-right: 10px; cursor: pointer; }
-   .userInfo { display: flex; align-items: center; }
-   .onlineDot { width: 8px; height: 8px; background: #16a34a; border-radius: 50%; margin-left: 5px; }
-   .offlineDot { width: 8px; height: 8px; background: #6b7280; border-radius: 50%; margin-left: 5px; }
-   .lastSeen { font-size: 11px; color: #6b7280; }
-   .streak { color: #f97316; font-weight: bold; margin-left: 5px; }
-    #logoutBtn { background: #dc2626; }
-   .hidden { display: none; }
-   .searchBox { display: flex; gap: 8px; margin-bottom: 10px; }
-   .searchBox input { margin: 0; }
-   .searchBox button { width: auto; margin: 0; }
-   .chatHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-   .msgCount { font-size: 12px; color: #9ca3af; }
-   .progressBar { width: 100%; height: 6px; background: #333; border-radius: 3px; margin-bottom: 10px; }
-   .progressFill { height: 100%; background: #a855f7; border-radius: 3px; transition: 0.3s; }
-   .settingRow { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; padding: 10px; background: #262626; border-radius: 10px; }
-   .toggle { width: 50px; height: 25px; background: #4b5563; border-radius: 25px; position: relative; cursor: pointer; }
-   .toggle.on { background: #16a34a; }
-   .toggleBall { width: 21px; height: 21px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.2s; }
-   .toggle.on .toggleBall { left: 27px; }
-   .inputRow { display: flex; gap: 8px; }
-   .inputRow input { margin: 0; }
-   .inputRow button { width: auto; margin: 0; padding: 14px; }
-   .emojiBtn { font-size: 20px; background: #262626; }
-   .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 999; }
-   .modalContent { text-align: center; }
-   .modalContent img { max-width: 90%; max-height: 70vh; border-radius: 12px; }
-   .modalBtns { margin-top: 15px; display: flex; gap: 10px; justify-content: center; }
-   .modalBtns button { width: auto; }
-  </style>
-</head>
-<body>
+import { useState, useEffect, useRef } from "react";
 
-  <div id="login">
-    <h2>VibeZ Login 💜</h2>
-    <input id="username" type="text" placeholder="Choose Username: @iqra123">
-    <input id="email" type="email" placeholder="Enter Email">
-    <input id="pass" type="password" placeholder="Enter Password">
-    <button onclick="signup()">Create New Account</button>
-    <button onclick="login()">Login</button>
-    <p id="error" style="color:#f87171; text-align:center;"></p>
-  </div>
+// ─── MOOD WORLDS ─────────────────────────────────────────────
+const MOODS = {
+  chill: {
+    emoji:"🌊", label:"Chill", color:"#4FC3F7",
+    bg:"#06111e", dim:"rgba(79,195,247,0.08)",
+    world:{ skyTop:"#020c16", skyBot:"#0a2540", glowColor:"#1565a0", scene:"ocean", ptType:"bubbles", accent:"#4FC3F7" }
+  },
+  happy: {
+    emoji:"✨", label:"Happy", color:"#FFD54F",
+    bg:"#120e00", dim:"rgba(255,213,79,0.08)",
+    world:{ skyTop:"#1a0d00", skyBot:"#4a3000", glowColor:"#d4830a", scene:"sunny", ptType:"sparkles", accent:"#FFD54F" }
+  },
+  sad: {
+    emoji:"🌧️", label:"Sad", color:"#7986CB",
+    bg:"#0a0c1a", dim:"rgba(121,134,203,0.08)",
+    world:{ skyTop:"#060812", skyBot:"#131828", glowColor:"#2e3a7a", scene:"rain", ptType:"rain", accent:"#7986CB" }
+  },
+  romantic: {
+    emoji:"💕", label:"Romantic", color:"#F48FB1",
+    bg:"#130010", dim:"rgba(244,143,177,0.08)",
+    world:{ skyTop:"#0d000a", skyBot:"#2a0022", glowColor:"#7a0040", scene:"cherry", ptType:"petals", accent:"#F48FB1" }
+  },
+  angry: {
+    emoji:"🔥", label:"Angry", color:"#FF7043",
+    bg:"#130600", dim:"rgba(255,112,67,0.08)",
+    world:{ skyTop:"#110000", skyBot:"#3a0a00", glowColor:"#aa1a00", scene:"volcano", ptType:"embers", accent:"#FF7043" }
+  },
+  lonely: {
+    emoji:"🌙", label:"Lonely", color:"#9575CD",
+    bg:"#080011", dim:"rgba(149,117,205,0.08)",
+    world:{ skyTop:"#03000a", skyBot:"#0d0018", glowColor:"#2d1060", scene:"moon", ptType:"stars", accent:"#9575CD" }
+  },
+};
 
-  <div id="app" class="hidden">
-    <h2>VibeZ 🚀</h2>
-    <p style="text-align:center; color:#9ca3af; margin:0 0 10px 0;">@<span id="myUsername"></span></p>
+const VOICE_AURA = {
+  chill:    { type:"waves",  label:"Blue Waves",      color:"#4FC3F7" },
+  happy:    { type:"sparks", label:"Electric Sparks", color:"#FFD54F" },
+  sad:      { type:"glow",   label:"Pastel Glow",     color:"#7986CB" },
+  romantic: { type:"glow",   label:"Pastel Glow",     color:"#F48FB1" },
+  angry:    { type:"sparks", label:"Electric Sparks", color:"#FF7043" },
+  lonely:   { type:"waves",  label:"Blue Waves",      color:"#9575CD" },
+};
 
-    <div id="tabs">
-      <button id="friendsTab" onclick="showTab('friends')" class="activeTab">Friends</button>
-      <button id="peopleTab" onclick="showTab('people')">Add</button>
-      <button id="reqTab" onclick="showTab('requests')">Requests <span id="reqNotif" class="notifDot hidden"></span></button>
-      <button id="profileTab" onclick="showTab('profile')">Profile</button>
+const SECRET_REACTS = {
+  chill:    [{e:"🌊",l:"Big chill"},{e:"✌️",l:"Peace"},{e:"😌",l:"Calm"},{e:"💎",l:"Rare"},{e:"🎵",l:"Vibe"}],
+  happy:    [{e:"✨",l:"Shine"},{e:"💛",l:"Warmth"},{e:"🤩",l:"Obsessed"},{e:"🥳",l:"Party"},{e:"🌟",l:"Star"}],
+  sad:      [{e:"💙",l:"I feel u"},{e:"🌧️",l:"Same"},{e:"🤍",l:"Gentle"},{e:"😢",l:"💔"},{e:"🫂",l:"Hug"}],
+  angry:    [{e:"🔥",l:"Burning"},{e:"💢",l:"Ugh"},{e:"😤",l:"Same"},{e:"❗",l:"Facts"},{e:"👊",l:"Felt"}],
+  romantic: [{e:"💕",l:"Soft"},{e:"🥺",l:"Aww"},{e:"💋",l:"Kiss"},{e:"🌹",l:"Rose"},{e:"😍",l:"Omg"}],
+  lonely:   [{e:"🌙",l:"Midnight"},{e:"😶",l:"Silence"},{e:"👻",l:"Ghost"},{e:"🫂",l:"Miss u"},{e:"🤍",l:"Softly"}],
+};
+
+const ADJ  = ["cosmic","neon","silky","vague","lunar","nova","astral","velvet","hazy","ether","prism","void","echo","ghost","pulse"];
+const NOUN = ["soul","ray","bloom","drop","wave","spark","mist","drift","flare","haze","shade","flux","arc","node","rift"];
+const rndId = () => "@"+ADJ[~~(Math.random()*ADJ.length)]+"_"+NOUN[~~(Math.random()*NOUN.length)]+(~~(Math.random()*9000)+1000);
+
+const UNIVERSE = [
+  {id:"u1",name:"Nova", vibeId:"@cosmic_ray2847",mood:"chill",   avatar:"N",mutual:2,streak:7, online:true, lastSeen:"now",   score:89},
+  {id:"u2",name:"Ryzen",vibeId:"@neon_drift5521", mood:"romantic",avatar:"R",mutual:0,streak:3, online:false,lastSeen:"2m ago",score:56},
+  {id:"u3",name:"Echo", vibeId:"@void_flare3390", mood:"lonely",  avatar:"E",mutual:1,streak:0, online:true, lastSeen:"now",   score:38},
+  {id:"u4",name:"Blaze",vibeId:"@pulse_arc8812",  mood:"angry",   avatar:"B",mutual:3,streak:21,online:false,lastSeen:"5m ago",score:95},
+  {id:"u5",name:"Lumii",vibeId:"@lunar_bloom1177",mood:"happy",   avatar:"L",mutual:1,streak:14,online:true, lastSeen:"now",   score:74},
+];
+
+const INIT_MSGS = {
+  u1:[
+    {id:"m1",text:"yo the chill is real 🌊",from:"them",ts:Date.now()-200000,seen:true,ttl:null,kind:"text"},
+    {id:"m2",text:"honestly same vibe rn",from:"me",ts:Date.now()-180000,seen:true,ttl:null,kind:"text"},
+    {id:"m3",text:"this disappears in 60s 👀",from:"them",ts:Date.now()-20000,seen:false,ttl:60,kind:"text"},
+  ],
+  u2:[{id:"m4",text:"thinking about you 💕",from:"them",ts:Date.now()-500000,seen:true,ttl:null,kind:"text"}],
+  u4:[{id:"m5",text:"bro we are CHAOTIC 😭🔥",from:"them",ts:Date.now()-900000,seen:true,ttl:null,kind:"text"}],
+  u5:[{id:"m6",text:"HII ✨✨",from:"them",ts:Date.now()-45000,seen:false,ttl:null,kind:"text"}],
+};
+
+const SCORE_LBL = s => s>=90?"Chaotic Duo 🔥":s>=75?"Cosmic Bond ✨":s>=55?"Warm Energy 💛":s>=35?"Warming Up 🌤️":"Dry Zone 🏜️";
+const ago = ts => { const d=Date.now()-ts; return d<60000?"just now":d<3600000?~~(d/60000)+"m":~~(d/3600000)+"h"; };
+
+let _user = null;
+const saveUser  = u  => { _user = u; };
+const loadUser  = () => _user;
+const clearUser = () => { _user = null; };
+
+// ─── CSS ─────────────────────────────────────────────────────
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body,html{margin:0;padding:0;}
+::-webkit-scrollbar{width:0;}
+input::placeholder{color:rgba(255,255,255,0.22);}
+input{-webkit-user-select:text;user-select:text;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes popIn{from{transform:scale(.65);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.3}40%{transform:translateY(-5px);opacity:1}}
+@keyframes avPulse{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes navGlow{0%,100%{opacity:.5;transform:translateX(-50%) scale(1)}50%{opacity:.9;transform:translateX(-50%) scale(1.12)}}
+@keyframes navLine{from{width:0;opacity:0}to{width:20px;opacity:1}}
+@keyframes floatUp{from{transform:translateY(0);opacity:1}to{transform:translateY(-100vh);opacity:0}}
+@keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+`;
+
+// ════════════════════════════════════════════════════════════
+// MOOD WORLD CANVAS  — full immersive background for chat
+// ════════════════════════════════════════════════════════════
+function MoodWorldCanvas({ mood }) {
+  const ref  = useRef();
+  const rafR = useRef();
+  const tR   = useRef(0);
+  const w    = MOODS[mood] || MOODS.chill;
+  const wld  = w.world;
+
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    const resize = () => { c.width = c.offsetWidth * window.devicePixelRatio; c.height = c.offsetHeight * window.devicePixelRatio; ctx.scale(window.devicePixelRatio, window.devicePixelRatio); };
+    resize();
+    window.addEventListener("resize", resize);
+
+    // Particle pool
+    const W = () => c.offsetWidth, H = () => c.offsetHeight;
+
+    // Build particles based on type
+    let pts = [];
+    const buildPts = () => {
+      pts = [];
+      const cnt = wld.ptType === "rain" ? 120 : wld.ptType === "stars" ? 80 : wld.ptType === "embers" ? 60 : wld.ptType === "petals" ? 40 : wld.ptType === "sparkles" ? 55 : 45;
+      for (let i = 0; i < cnt; i++) pts.push(newPt(i));
+    };
+
+    const newPt = (i) => {
+      const t = wld.ptType;
+      if (t === "rain")     return { x: Math.random()*W(), y: Math.random()*H(), spd: 4+Math.random()*6, len: 10+Math.random()*15, alpha: .15+Math.random()*.4 };
+      if (t === "stars")    return { x: Math.random()*W(), y: Math.random()*H()*0.7, r: .5+Math.random()*1.8, twinkle: Math.random()*Math.PI*2, spd: .02+Math.random()*.04 };
+      if (t === "embers")   return { x: Math.random()*W(), y: H()+Math.random()*50, spd: .5+Math.random()*1.5, dx: (Math.random()-.5)*1.2, r: 1+Math.random()*2.5, life: Math.random(), alpha: .6+Math.random()*.4 };
+      if (t === "petals")   return { x: Math.random()*W(), y: -20-Math.random()*H(), spd: .4+Math.random()*.8, dx: Math.sin(i)*0.8, rot: Math.random()*Math.PI*2, rotSpd: (Math.random()-.5)*.05, size: 4+Math.random()*8 };
+      if (t === "sparkles") return { x: Math.random()*W(), y: Math.random()*H(), r: .5+Math.random()*2, life: Math.random(), lifeSpd: .005+Math.random()*.015, rising: Math.random()>.5 };
+      // bubbles
+      return { x: Math.random()*W(), y: H()+Math.random()*H(), spd: .2+Math.random()*.6, r: 2+Math.random()*8, alpha: .05+Math.random()*.2 };
+    };
+
+    buildPts();
+
+    // Draw sky gradient
+    const drawSky = () => {
+      const grd = ctx.createLinearGradient(0, 0, 0, H());
+      grd.addColorStop(0, wld.skyTop);
+      grd.addColorStop(1, wld.skyBot);
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, W(), H());
+    };
+
+    // Scene elements
+    const drawOcean = (t) => {
+      // Horizon glow
+      const hg = ctx.createRadialGradient(W()/2, H()*.55, 0, W()/2, H()*.55, W()*0.7);
+      hg.addColorStop(0, wld.glowColor+"55"); hg.addColorStop(1, "transparent");
+      ctx.fillStyle = hg; ctx.fillRect(0, 0, W(), H());
+      // Waves
+      for (let i = 0; i < 4; i++) {
+        const y = H()*(0.55 + i*0.12);
+        const amp = 6-i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x2 = 0; x2 <= W(); x2 += 4) {
+          ctx.lineTo(x2, y + Math.sin((x2/W()*Math.PI*3) + t*0.02 + i*1.2)*amp);
+        }
+        ctx.lineTo(W(), H()); ctx.lineTo(0, H()); ctx.closePath();
+        const wg = ctx.createLinearGradient(0, y, 0, H());
+        wg.addColorStop(0, wld.accent+(i===0?"44":"22")); wg.addColorStop(1, wld.accent+"11");
+        ctx.fillStyle = wg; ctx.fill();
+      }
+      // Moon reflection on water
+      ctx.beginPath(); ctx.ellipse(W()/2, H()*.58, 20, 6, 0, 0, Math.PI*2);
+      ctx.fillStyle = wld.accent+"33"; ctx.fill();
+    };
+
+    const drawSunny = (t) => {
+      // Sun glow
+      const sg = ctx.createRadialGradient(W()*0.72, H()*0.22, 0, W()*0.72, H()*0.22, W()*0.5);
+      sg.addColorStop(0, "#ffcc0088"); sg.addColorStop(0.4, "#ff880033"); sg.addColorStop(1, "transparent");
+      ctx.fillStyle = sg; ctx.fillRect(0, 0, W(), H());
+      // Sun disc
+      ctx.beginPath(); ctx.arc(W()*0.72, H()*0.22, 28+Math.sin(t*.03)*3, 0, Math.PI*2);
+      ctx.fillStyle = "#FFD54F"; ctx.fill();
+      ctx.beginPath(); ctx.arc(W()*0.72, H()*0.22, 36+Math.sin(t*.03)*4, 0, Math.PI*2);
+      ctx.fillStyle = "#FFD54F33"; ctx.fill();
+      // Hills
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-10, H());
+        ctx.bezierCurveTo(W()*0.1+i*80, H()*(0.62-i*.06), W()*(0.4+i*.15), H()*(0.58-i*.06), W()+10, H());
+        ctx.fillStyle = i===0 ? "#2d1a0088" : i===1 ? "#1a0d0066" : "#0f070044";
+        ctx.fill();
+      }
+    };
+
+    const drawRain = (t) => {
+      // Overcast glow
+      const rg = ctx.createRadialGradient(W()/2, H()*0.3, 0, W()/2, H()*0.3, W()*0.8);
+      rg.addColorStop(0, wld.glowColor+"44"); rg.addColorStop(1, "transparent");
+      ctx.fillStyle = rg; ctx.fillRect(0, 0, W(), H());
+      // City silhouette
+      const buildings = [
+        {x:0,w:60,h:180},{x:50,w:40,h:140},{x:80,w:55,h:200},{x:125,w:45,h:160},
+        {x:160,w:65,h:220},{x:215,w:50,h:175},{x:255,w:40,h:190},{x:290,w:70,h:150},
+        {x:350,w:55,h:210},{x:395,w:45,h:165},{x:430,w:60,h:185},
+      ];
+      buildings.forEach(b => {
+        ctx.fillStyle = "#0a0c1a";
+        ctx.fillRect(b.x, H()-b.h, b.w, b.h);
+        // lit windows
+        for (let r2=0; r2<4; r2++) for (let c2=0; c2<3; c2++) {
+          if (Math.sin(b.x*r2+c2*t*.01) > 0.3) {
+            ctx.fillStyle = "#7986CB33";
+            ctx.fillRect(b.x+6+c2*16, H()-b.h+20+r2*28, 8, 10);
+          }
+        }
+      });
+    };
+
+    const drawCherry = (t) => {
+      // Purple-pink sky glow
+      const cg = ctx.createRadialGradient(W()*0.4, H()*0.3, 0, W()*0.4, H()*0.3, W()*0.8);
+      cg.addColorStop(0, "#8b003366"); cg.addColorStop(1, "transparent");
+      ctx.fillStyle = cg; ctx.fillRect(0, 0, W(), H());
+      // Moon
+      ctx.beginPath(); ctx.arc(W()*0.75, H()*0.18, 20, 0, Math.PI*2);
+      ctx.fillStyle = "#F48FB1cc"; ctx.fill();
+      ctx.beginPath(); ctx.arc(W()*0.75, H()*0.18, 28, 0, Math.PI*2);
+      ctx.fillStyle = "#F48FB133"; ctx.fill();
+      // Cherry tree trunk
+      ctx.fillStyle = "#2a0018";
+      ctx.fillRect(W()*0.35, H()*0.45, 18, H()*0.55);
+      // Branches
+      const branches = [[W()*0.35,H()*0.45,W()*0.15,H()*0.25],[W()*0.35,H()*0.45,W()*0.55,H()*0.28],[W()*0.35,H()*0.5,W()*0.2,H()*0.38],[W()*0.35,H()*0.5,W()*0.5,H()*0.4]];
+      ctx.strokeStyle = "#3a0020"; ctx.lineWidth = 5;
+      branches.forEach(([x1,y1,x2,y2]) => {
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.quadraticCurveTo((x1+x2)/2,y1-30,x2,y2); ctx.stroke();
+      });
+      // Blossom clusters
+      const blossoms = [[W()*.15,H()*.25],[W()*.5,H()*.28],[W()*.2,H()*.38],[W()*.5,H()*.4],[W()*.08,H()*.42],[W()*.62,H()*.35]];
+      blossoms.forEach(([bx,by]) => {
+        for (let i=0; i<8; i++) {
+          const ang = i/8*Math.PI*2 + t*.005;
+          ctx.beginPath(); ctx.arc(bx+Math.cos(ang)*18, by+Math.sin(ang)*12, 8+Math.sin(t*.02+i)*1.5, 0, Math.PI*2);
+          ctx.fillStyle = "#F48FB188"; ctx.fill();
+        }
+        ctx.beginPath(); ctx.arc(bx,by,10,0,Math.PI*2);
+        ctx.fillStyle="#F48FB1aa"; ctx.fill();
+      });
+    };
+
+    const drawVolcano = (t) => {
+      // Lava glow on horizon
+      const vg = ctx.createRadialGradient(W()/2, H(), 0, W()/2, H(), W()*0.9);
+      vg.addColorStop(0, "#ff440055"); vg.addColorStop(0.5, "#aa110033"); vg.addColorStop(1, "transparent");
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W(), H());
+      // Volcano silhouette
+      ctx.beginPath();
+      ctx.moveTo(-10, H());
+      ctx.lineTo(W()*0.25, H()*0.4);
+      ctx.lineTo(W()*0.35, H()*0.35);
+      ctx.lineTo(W()*0.45, H()*0.4);
+      ctx.lineTo(W()+10, H());
+      ctx.fillStyle = "#1a0400"; ctx.fill();
+      // Crater glow
+      const cg2 = ctx.createRadialGradient(W()*0.35, H()*0.35, 0, W()*0.35, H()*0.35, 40);
+      cg2.addColorStop(0, "#FF7043cc"); cg2.addColorStop(0.5, "#ff440055"); cg2.addColorStop(1, "transparent");
+      ctx.fillStyle = cg2;
+      ctx.beginPath(); ctx.arc(W()*0.35, H()*0.35, 40, 0, Math.PI*2); ctx.fill();
+      // Lava streams
+      for (let i=0; i<3; i++) {
+        const lx = W()*0.35 + (i-1)*12;
+        ctx.beginPath(); ctx.moveTo(lx, H()*0.35);
+        ctx.quadraticCurveTo(lx+(i-1)*20, H()*0.55, lx+(i-1)*35, H()*0.7);
+        ctx.strokeStyle = `rgba(255,${70+i*20},0,${0.3+Math.sin(t*.05+i)*.2})`; ctx.lineWidth = 4+i*2;
+        ctx.stroke();
+      }
+    };
+
+    const drawMoon = (t) => {
+      // Moon glow
+      const mg = ctx.createRadialGradient(W()*0.65, H()*0.2, 0, W()*0.65, H()*0.2, W()*0.6);
+      mg.addColorStop(0, "#9575CD44"); mg.addColorStop(1, "transparent");
+      ctx.fillStyle = mg; ctx.fillRect(0, 0, W(), H());
+      // Moon disc
+      ctx.beginPath(); ctx.arc(W()*0.65, H()*0.2, 30, 0, Math.PI*2);
+      ctx.fillStyle = "#c8a8f0ee"; ctx.fill();
+      // Moon craters
+      [[8,8,4],[16,-5,3],[-6,10,2]].forEach(([cx,cy,cr]) => {
+        ctx.beginPath(); ctx.arc(W()*0.65+cx, H()*0.2+cy, cr, 0, Math.PI*2);
+        ctx.fillStyle="#a080cc66"; ctx.fill();
+      });
+      // Moon halo
+      ctx.beginPath(); ctx.arc(W()*0.65, H()*0.2, 42, 0, Math.PI*2);
+      ctx.strokeStyle="#9575CD33"; ctx.lineWidth=8; ctx.stroke();
+      // Distant hills / landscape
+      for (let i=2; i>=0; i--) {
+        ctx.beginPath();
+        ctx.moveTo(-10,H());
+        const pts2 = [];
+        for (let x2=0; x2<=W()+10; x2+=30) pts2.push({x:x2, y:H()*(0.65+i*.08)+Math.sin(x2*.015+i)*20});
+        pts2.forEach((p,idx) => idx===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+        ctx.lineTo(W()+10,H()); ctx.lineTo(-10,H()); ctx.closePath();
+        ctx.fillStyle = i===0?"#0d001899":i===1?"#08001266":"#05000d44"; ctx.fill();
+      }
+    };
+
+    // Particle draw
+    const drawParticles = (t) => {
+      pts.forEach((p, i) => {
+        const type = wld.ptType;
+        if (type === "bubbles") {
+          p.y -= p.spd;
+          if (p.y < -p.r*2) { pts[i] = newPt(i); return; }
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+          ctx.strokeStyle = wld.accent+Math.floor(p.alpha*255).toString(16).padStart(2,"0");
+          ctx.lineWidth = 1; ctx.stroke();
+        }
+        else if (type === "rain") {
+          p.y += p.spd; p.x -= 0.5;
+          if (p.y > H()) { pts[i] = newPt(i); return; }
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x+2, p.y+p.len);
+          ctx.strokeStyle = wld.accent+Math.floor(p.alpha*255).toString(16).padStart(2,"0");
+          ctx.lineWidth = 1; ctx.stroke();
+        }
+        else if (type === "stars") {
+          p.twinkle += p.spd;
+          const alpha = 0.4 + Math.sin(p.twinkle)*0.5;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+          ctx.fillStyle = "#ffffff"+Math.floor(alpha*255).toString(16).padStart(2,"0"); ctx.fill();
+        }
+        else if (type === "embers") {
+          p.y -= p.spd; p.x += p.dx + Math.sin(t*.05+i)*.5; p.life -= 0.004;
+          if (p.life <= 0 || p.y < -10) { pts[i] = newPt(i); return; }
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r*p.life, 0, Math.PI*2);
+          ctx.fillStyle = `rgba(255,${~~(80+p.life*120)},0,${p.alpha*p.life})`; ctx.fill();
+        }
+        else if (type === "petals") {
+          p.y += p.spd; p.x += p.dx + Math.sin(t*.02+i)*.5; p.rot += p.rotSpd;
+          if (p.y > H()+20) { pts[i] = newPt(i); return; }
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+          ctx.beginPath(); ctx.ellipse(0, 0, p.size, p.size*.5, 0, 0, Math.PI*2);
+          ctx.fillStyle = "#F48FB166"; ctx.fill(); ctx.restore();
+        }
+        else if (type === "sparkles") {
+          p.life += p.lifeSpd * (p.rising?1:-1);
+          if (p.life>1||p.life<0) { p.rising=!p.rising; }
+          const sz = p.r * p.life;
+          ctx.save(); ctx.translate(p.x, p.y);
+          // 4-point star
+          ctx.beginPath();
+          for (let j=0;j<8;j++) {
+            const ang = j/8*Math.PI*2;
+            const r2 = j%2===0 ? sz*2 : sz*.8;
+            j===0 ? ctx.moveTo(Math.cos(ang)*r2, Math.sin(ang)*r2) : ctx.lineTo(Math.cos(ang)*r2, Math.sin(ang)*r2);
+          }
+          ctx.closePath();
+          ctx.fillStyle = wld.accent+Math.floor(p.life*.8*255).toString(16).padStart(2,"0"); ctx.fill();
+          ctx.restore();
+        }
+      });
+    };
+
+    const SCENES = { ocean:drawOcean, sunny:drawSunny, rain:drawRain, cherry:drawCherry, volcano:drawVolcano, moon:drawMoon };
+
+    const loop = () => {
+      const t = tR.current++;
+      ctx.clearRect(0, 0, W(), H());
+      drawSky();
+      const sceneFn = SCENES[wld.scene];
+      if (sceneFn) sceneFn(t);
+      drawParticles(t);
+      rafR.current = requestAnimationFrame(loop);
+    };
+    loop();
+    return () => { cancelAnimationFrame(rafR.current); window.removeEventListener("resize", resize); };
+  }, [mood]);
+
+  return (
+    <canvas ref={ref} style={{
+      position:"absolute", inset:0, width:"100%", height:"100%",
+      display:"block", zIndex:0,
+    }} />
+  );
+}
+
+// ─── MOOD AURA (avatar ring) ──────────────────────────────────
+function MoodAura({ mood, size }) {
+  const ref = useRef();
+  const m   = MOODS[mood] || MOODS.chill;
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const ctx = c.getContext("2d");
+    const W = size*2, H = size*2, cx = W/2, cy = H/2;
+    c.width = W; c.height = H;
+    let t=0, raf;
+    const loop = () => {
+      ctx.clearRect(0,0,W,H);
+      for (let i=3; i>0; i--) {
+        const r = size*.75*(i/3)+Math.sin(t*.035+i)*4;
+        const g = ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+        g.addColorStop(0,m.color+"3a"); g.addColorStop(1,m.color+"00");
+        ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+      }
+      t++; raf=requestAnimationFrame(loop);
+    };
+    loop(); return () => cancelAnimationFrame(raf);
+  }, [mood, size]);
+  return <canvas ref={ref} style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)", width:size*2, height:size*2, pointerEvents:"none" }} />;
+}
+
+// ─── VOICE AURA ───────────────────────────────────────────────
+function VoiceAura({ mood, active, size }) {
+  const ref  = useRef();
+  const tRef = useRef(0);
+  const aura = VOICE_AURA[mood] || VOICE_AURA.chill;
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const ctx = c.getContext("2d");
+    const W=size*2, H=size*2, cx=W/2, cy=H/2;
+    c.width=W; c.height=H;
+    let raf;
+    const loop = () => {
+      const t = tRef.current++;
+      ctx.clearRect(0,0,W,H);
+      if (aura.type==="waves") {
+        for (let i=0; i<5; i++) {
+          const r = size*.35+Math.sin(t*.04+i*(Math.PI*2/5))*14*(active?1:.3);
+          const g = ctx.createRadialGradient(cx,cy,r*.2,cx,cy,r);
+          g.addColorStop(0,aura.color+"55"); g.addColorStop(1,aura.color+"00");
+          ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+        }
+      } else if (aura.type==="sparks") {
+        const g=ctx.createRadialGradient(cx,cy,0,cx,cy,size*.55);
+        g.addColorStop(0,aura.color+"33"); g.addColorStop(1,aura.color+"00");
+        ctx.beginPath(); ctx.arc(cx,cy,size*.55,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+        if (active) for (let i=0;i<12;i++) {
+          const ang=t*.06+i*(Math.PI*2/12);
+          const d=size*.38+Math.sin(t*.08+i*1.3)*size*.18;
+          ctx.beginPath(); ctx.arc(cx+Math.cos(ang)*d, cy+Math.sin(ang)*d, 2+Math.sin(t*.1+i)*1.5, 0,Math.PI*2);
+          ctx.fillStyle=aura.color+"cc"; ctx.fill();
+        }
+      } else {
+        const pulse=active?0.5+Math.sin(t*.05)*.5:.15;
+        for (let i=3;i>0;i--) {
+          const r=size*(.2+i*.12)*(active?1+Math.sin(t*.04+i)*.12:.7);
+          const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+          g.addColorStop(0,aura.color+Math.floor(pulse*80).toString(16).padStart(2,"0")); g.addColorStop(1,aura.color+"00");
+          ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+        }
+      }
+      raf=requestAnimationFrame(loop);
+    };
+    loop(); return ()=>cancelAnimationFrame(raf);
+  },[mood,active,size]);
+  return <canvas ref={ref} style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:size,height:size,pointerEvents:"none" }} />;
+}
+
+// ─── AVATAR ──────────────────────────────────────────────────
+function Avatar({ letter, mood, size=44, aura=false, pulse=false }) {
+  const m = MOODS[mood] || MOODS.chill;
+  return (
+    <div style={{ position:"relative", width:size, height:size, flexShrink:0 }}>
+      {aura && <MoodAura mood={mood} size={size} />}
+      <div style={{ width:size, height:size, borderRadius:"50%", background:`radial-gradient(circle at 35% 30%,${m.color}ee,${m.color}66)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*.38, fontWeight:800, color:"#fff", fontFamily:"'Outfit',sans-serif", boxShadow:pulse?`0 0 0 2px ${m.color},0 0 20px ${m.color}66`:`0 0 0 1.5px ${m.color}55`, position:"relative", zIndex:1, animation:pulse?"avPulse 2.4s ease-in-out infinite":"none" }}>{letter}</div>
     </div>
+  );
+}
 
-    <div id="friendsDiv">
-      <div id="friendsList"></div>
+function StreakBadge({ count }) {
+  if (!count) return null;
+  const hot = count>=7;
+  return <div style={{ display:"flex", alignItems:"center", gap:3, padding:"2px 7px", borderRadius:10, background:hot?"rgba(255,100,0,0.18)":"rgba(255,255,255,0.07)", border:hot?"1px solid rgba(255,100,0,0.4)":"1px solid rgba(255,255,255,0.1)", fontSize:11, fontFamily:"'Outfit',sans-serif", fontWeight:700, color:hot?"#FF7043":"#ffffff77" }}>{hot?"🔥":"⚡"} {count}d</div>;
+}
+
+const ISX = c => ({ width:"100%", boxSizing:"border-box", background:"rgba(255,255,255,0.06)", border:`1.5px solid ${c}44`, borderRadius:14, padding:"13px 16px", color:"#fff", fontSize:15, fontFamily:"'Outfit',sans-serif", outline:"none", display:"block", marginBottom:12 });
+
+function Btn({ children, color, onClick, disabled, outline }) {
+  return <button onClick={onClick} disabled={disabled} style={{ width:"100%", padding:"14px", borderRadius:14, border:outline?`1.5px solid ${color}55`:"none", background:disabled?"rgba(255,255,255,0.05)":outline?"transparent":`linear-gradient(135deg,${color},${color}aa)`, color:disabled?"#ffffff22":outline?color:"#000", fontSize:14, fontWeight:700, cursor:disabled?"not-allowed":"pointer", fontFamily:"'Outfit',sans-serif", letterSpacing:.3, boxShadow:disabled||outline?"none":`0 4px 24px ${color}44`, transition:"all .2s" }}>{children}</button>;
+}
+
+// ─── SPLASH ──────────────────────────────────────────────────
+function Splash({ onResult }) {
+  useEffect(() => { const saved=loadUser(); const t=setTimeout(()=>onResult(saved),1400); return()=>clearTimeout(t); }, []);
+  return (
+    <div style={{ minHeight:"100vh", background:"#060610", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'Outfit',sans-serif" }}>
+      <style>{CSS}</style>
+      <div style={{ width:70,height:70,borderRadius:22,background:"linear-gradient(135deg,#4FC3F7,#9575CD,#F48FB1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:34,marginBottom:18,boxShadow:"0 8px 40px rgba(79,195,247,0.35)",animation:"logoFloat 2s ease-in-out infinite" }}>⚡</div>
+      <h1 style={{ margin:0,fontSize:36,fontWeight:800,letterSpacing:-1.5,background:"linear-gradient(135deg,#fff 30%,#9575CD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>VibeZ</h1>
+      <p style={{ margin:"8px 0 0",fontSize:11,color:"#ffffff28",letterSpacing:3 }}>FEEL · SEND · FORGET</p>
+      <div style={{ display:"flex",gap:6,marginTop:36 }}>
+        {[0,1,2].map(i=><div key={i} style={{ width:6,height:6,borderRadius:"50%",background:"#ffffff33",animation:"bounce 1.2s infinite",animationDelay:`${i*0.2}s` }}/>)}
+      </div>
     </div>
+  );
+}
 
-    <div id="peopleDiv" class="hidden">
-      <div class="searchBox">
-        <input id="searchUser" placeholder="Search by @username or email">
-        <button onclick="searchUser()">Search</button>
+// ─── CREATE ACCOUNT ──────────────────────────────────────────
+function CreateAccount({ onDone }) {
+  const [step,setStep]=useState(0);
+  const [name,setName]=useState("");
+  const [vid,setVid]=useState("");
+  const [mood,setMood]=useState("chill");
+  const [done,setDone]=useState(false);
+  const m=MOODS[mood];
+  const next=()=>{
+    if(step===0){if(!name.trim())return;setVid(rndId());setStep(1);}
+    else if(step===1){if(!vid.startsWith("@")||vid.length<4)return;setStep(2);}
+    else{setDone(true);const u={name:name.trim(),vibeId:vid,mood};saveUser(u);setTimeout(()=>onDone(u),1100);}
+  };
+  return (
+    <div style={{ minHeight:"100vh",background:"#060610",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"0 28px",fontFamily:"'Outfit',sans-serif",overflow:"hidden",position:"relative" }}>
+      <style>{CSS}</style>
+      <div style={{ position:"absolute",top:"18%",left:"50%",transform:"translateX(-50%)",width:320,height:320,borderRadius:"50%",background:`radial-gradient(circle,${m.color}10 0%,transparent 65%)`,pointerEvents:"none",transition:"background 1s" }}/>
+      <div style={{ marginBottom:40,textAlign:"center",position:"relative",zIndex:1 }}>
+        <div style={{ width:58,height:58,borderRadius:18,background:`linear-gradient(135deg,${m.color},${m.color}88)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 14px",boxShadow:`0 8px 32px ${m.color}44`,animation:"logoFloat 3s ease-in-out infinite",transition:"background 1s,box-shadow 1s" }}>⚡</div>
+        <h1 style={{ margin:0,fontSize:32,fontWeight:800,letterSpacing:-1.5,background:`linear-gradient(135deg,#fff 30%,${m.color})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",transition:"background 1s" }}>VibeZ</h1>
+        <p style={{ margin:"5px 0 0",fontSize:11,color:"#ffffff28",letterSpacing:3 }}>FEEL · SEND · FORGET</p>
       </div>
-      <div id="userList"><p style="text-align:center;color:#6b7280">Search user to add friend</p></div>
+      {done?(
+        <div style={{ textAlign:"center",animation:"fadeUp .5s ease",position:"relative",zIndex:1 }}>
+          <div style={{ fontSize:50,marginBottom:12,animation:"popIn .4s ease" }}>🎉</div>
+          <p style={{ color:"#fff",fontSize:19,fontWeight:700,margin:0 }}>Welcome, {name}!</p>
+          <p style={{ color:m.color,fontSize:13,marginTop:6 }}>{vid}</p>
+          <p style={{ color:"#ffffff44",fontSize:11,marginTop:4 }}>You're all set ✓</p>
+        </div>
+      ):(
+        <div style={{ width:"100%",maxWidth:340,animation:"fadeUp .4s ease",position:"relative",zIndex:1 }}>
+          <div style={{ display:"flex",gap:5,marginBottom:30,justifyContent:"center" }}>
+            {[0,1,2].map(i=><div key={i} style={{ height:3,borderRadius:3,transition:"all .4s",width:i===step?32:10,background:i<step?`${m.color}88`:i===step?m.color:"#ffffff12" }}/>)}
+          </div>
+          {step===0&&(<>
+            <p style={{ color:"#ffffffaa",fontSize:14,marginBottom:5,textAlign:"center",fontWeight:500 }}>What do people call you?</p>
+            <p style={{ color:"#ffffff44",fontSize:12,marginBottom:18,textAlign:"center" }}>This shows in chats</p>
+            <input value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&next()} placeholder="Your name…" autoFocus style={ISX(m.color)}/>
+            <Btn color={m.color} onClick={next} disabled={!name.trim()}>Continue →</Btn>
+          </>)}
+          {step===1&&(<>
+            <p style={{ color:"#ffffffaa",fontSize:14,marginBottom:4,textAlign:"center",fontWeight:500 }}>Your Vibe ID</p>
+            <p style={{ color:"#ffffff44",fontSize:12,marginBottom:16,textAlign:"center" }}>No phone number needed</p>
+            <div style={{ position:"relative" }}>
+              <input value={vid} onChange={e=>setVid(e.target.value)} style={{ ...ISX(m.color),paddingRight:48 }}/>
+              <button onClick={()=>setVid(rndId())} style={{ position:"absolute",right:14,top:"50%",transform:"translateY(-56%)",background:"none",border:"none",color:m.color,cursor:"pointer",fontSize:18,padding:4 }}>↺</button>
+            </div>
+            <p style={{ color:"#ffffff28",fontSize:11,marginBottom:18,textAlign:"center" }}>Tap ↺ to regenerate · Must start with @</p>
+            <Btn color={m.color} onClick={next} disabled={!vid.startsWith("@")||vid.length<4}>Looks good →</Btn>
+            <div style={{ marginTop:9 }}><Btn color={m.color} onClick={()=>setStep(0)} outline>← Back</Btn></div>
+          </>)}
+          {step===2&&(<>
+            <p style={{ color:"#ffffffaa",fontSize:14,marginBottom:18,textAlign:"center",fontWeight:500 }}>Set your current mood</p>
+            <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:24 }}>
+              {Object.entries(MOODS).map(([k,v])=>(
+                <button key={k} onClick={()=>setMood(k)} style={{ display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:14,cursor:"pointer",background:mood===k?`${v.color}14`:"rgba(255,255,255,0.03)",border:mood===k?`1.5px solid ${v.color}77`:"1.5px solid rgba(255,255,255,0.06)",transition:"all .2s" }}>
+                  <span style={{ fontSize:22 }}>{v.emoji}</span>
+                  <span style={{ color:mood===k?v.color:"#ffffffaa",fontFamily:"'Outfit',sans-serif",fontSize:14,fontWeight:mood===k?700:500 }}>{v.label}</span>
+                  {mood===k&&<div style={{ marginLeft:"auto",width:7,height:7,borderRadius:"50%",background:v.color }}/>}
+                </button>
+              ))}
+            </div>
+            <Btn color={m.color} onClick={next}>Enter VibeZ ⚡</Btn>
+          </>)}
+        </div>
+      )}
     </div>
+  );
+}
 
-    <div id="requestsDiv" class="hidden">
-      <div id="requestList"></div>
-    </div>
-
-    <div id="profileDiv" class="hidden">
-      <div style="text-align:center;margin-bottom:15px;">
-        <img id="myProfilePic" class="profilePic" style="width:80px;height:80px;" src="https://i.imgur.com/6VBx3io.png" onclick="openDpModal()">
-        <p style="font-size:12px;color:#9ca3af;margin:5px 0;">Tap to view/change</p>
-      </div>
-      <div class="settingRow">
-        <span>Display Name</span>
-        <input id="displayName" style="width: 60%; margin: 0; padding: 8px;" placeholder="Your name">
-      </div>
-      <div class="settingRow">
-        <span>Profile Pic URL</span>
-        <input id="picUrl" style="width: 60%; margin: 0; padding: 8px;" placeholder="Imgur link paste karo">
-      </div>
-      <div class="settingRow">
-        <span>Show Online Status</span>
-        <div id="onlineToggle" class="toggle on" onclick="toggleOnline()"><div class="toggleBall"></div></div>
-      </div>
-      <div class="settingRow">
-        <span>Show Last Seen</span>
-        <div id="lastSeenToggle" class="toggle on" onclick="toggleLastSeen()"><div class="toggleBall"></div></div>
-      </div>
-      <button onclick="saveProfile()">Save Profile</button>
-    </div>
-
-    <div id="chatDiv" class="hidden">
-      <button class="backBtn" onclick="closeChat()">← Back</button>
-      <div class="chatHeader">
-        <div class="userInfo">
-          <img id="chatPic" class="profilePic" src="https://i.imgur.com/6VBx3io.png">
-          <div>
-            <h3 id="chatWith" style="margin:0;"></h3>
-            <div id="chatStatus" class="lastSeen"></div>
+// ─── HOME ────────────────────────────────────────────────────
+function Home({ user, friends, requests, onOpenChat, onGoFind, onGoRequests }) {
+  const m=MOODS[user.mood]; const reqCount=requests.filter(r=>r.to===user.vibeId).length;
+  return (
+    <div style={{ flex:1,overflowY:"auto",paddingBottom:90 }}>
+      <div style={{ padding:"52px 22px 18px",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+        <div>
+          <h2 style={{ margin:0,fontSize:24,fontWeight:800,color:"#fff",fontFamily:"'Outfit',sans-serif",letterSpacing:-.8 }}>Messages</h2>
+          <div style={{ display:"flex",alignItems:"center",gap:6,marginTop:5 }}>
+            <div style={{ width:7,height:7,borderRadius:"50%",background:m.color,animation:"avPulse 2s infinite" }}/>
+            <span style={{ fontSize:12,color:m.color,fontFamily:"'Outfit',sans-serif",fontWeight:500 }}>{user.vibeId}</span>
           </div>
         </div>
-        <span class="msgCount" id="msgCount"></span>
+        <div style={{ display:"flex",gap:9,alignItems:"center" }}>
+          {reqCount>0&&(
+            <button onClick={onGoRequests} style={{ position:"relative",width:40,height:40,borderRadius:12,background:"rgba(255,255,255,0.07)",border:"1.5px solid rgba(255,255,255,0.1)",cursor:"pointer",color:"#fff",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center" }}>
+              🔔<span style={{ position:"absolute",top:-5,right:-5,background:m.color,color:"#000",fontSize:10,fontWeight:800,width:18,height:18,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center" }}>{reqCount}</span>
+            </button>
+          )}
+          <button onClick={onGoFind} style={{ height:40,padding:"0 18px",borderRadius:12,background:`linear-gradient(135deg,${m.color},${m.color}99)`,border:"none",cursor:"pointer",color:"#000",fontSize:13,fontFamily:"'Outfit',sans-serif",fontWeight:700,boxShadow:`0 4px 18px ${m.color}44`,display:"flex",alignItems:"center",gap:5 }}>
+            <span style={{ fontSize:15 }}>+</span> Add
+          </button>
+        </div>
       </div>
-      <div class="progressBar"><div id="progressFill" class="progressFill" style="width:0%"></div></div>
-      <div id="messages"></div>
-      <div class="inputRow">
-        <button class="emojiBtn" onclick="addEmoji()">😊</button>
-        <input id="msgInput" placeholder="Type or paste Imgur link for pic...">
-        <button onclick="sendMsg()">Send</button>
+      <div style={{ margin:"0 18px 18px",padding:"13px 16px",borderRadius:16,background:"rgba(255,112,0,0.10)",border:"1.5px solid rgba(255,112,0,0.22)",display:"flex",alignItems:"center",gap:10 }}>
+        <span style={{ fontSize:22 }}>🔥</span>
+        <div style={{ flex:1 }}><p style={{ margin:0,fontSize:13,fontWeight:700,color:"#FF9060",fontFamily:"'Outfit',sans-serif" }}>Daily Vibe Streak</p><p style={{ margin:"2px 0 0",fontSize:11,color:"#ffffff44",fontFamily:"'Outfit',sans-serif" }}>Message someone to keep it alive</p></div>
+        <div style={{ fontSize:20,fontWeight:800,color:"#FF7043",fontFamily:"'Outfit',sans-serif" }}>1d</div>
+      </div>
+      {friends.length===0?(
+        <div style={{ textAlign:"center",padding:"50px 30px",fontFamily:"'Outfit',sans-serif" }}>
+          <div style={{ fontSize:44,marginBottom:14 }}>👻</div>
+          <p style={{ fontSize:15,color:"#ffffff99",margin:0,fontWeight:600 }}>No chats yet</p>
+          <p style={{ fontSize:12,color:"#ffffff33",marginTop:6 }}>Find people by Vibe ID</p>
+          <button onClick={onGoFind} style={{ marginTop:22,padding:"11px 28px",borderRadius:12,background:`${m.color}20`,border:`1.5px solid ${m.color}55`,color:m.color,cursor:"pointer",fontSize:13,fontFamily:"'Outfit',sans-serif",fontWeight:600 }}>Find someone →</button>
+        </div>
+      ):(
+        <div style={{ padding:"0 14px",display:"flex",flexDirection:"column",gap:4 }}>
+          {friends.map((f,i)=>{
+            const fm=MOODS[f.mood]||MOODS.chill; const msgs=INIT_MSGS[f.id]||[]; const last=msgs[msgs.length-1]; const unread=msgs.filter(x=>!x.seen&&x.from==="them").length;
+            return (
+              <div key={f.id} onClick={()=>onOpenChat(f)}
+                style={{ display:"flex",gap:14,alignItems:"center",padding:"13px 12px",borderRadius:16,background:"rgba(255,255,255,0.03)",border:"1.5px solid rgba(255,255,255,0.055)",cursor:"pointer",animation:`fadeUp .35s ease ${i*.07}s both`,transition:"background .15s,transform .12s" }}
+                onMouseDown={e=>{e.currentTarget.style.background="rgba(255,255,255,0.065)";e.currentTarget.style.transform="scale(.985)";}}
+                onMouseUp={e=>{e.currentTarget.style.background="rgba(255,255,255,0.03)";e.currentTarget.style.transform="scale(1)";}}
+              >
+                <div style={{ position:"relative" }}>
+                  <Avatar letter={f.avatar} mood={f.mood} size={50} aura={f.online} pulse={f.online}/>
+                  {f.online&&<div style={{ position:"absolute",bottom:1,right:1,zIndex:2,width:11,height:11,borderRadius:"50%",background:"#4CAF50",border:"2px solid #06111e" }}/>}
+                </div>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:6 }}>
+                    <div style={{ display:"flex",alignItems:"center",gap:7 }}>
+                      <span style={{ fontWeight:700,color:"#fff",fontSize:14.5,fontFamily:"'Outfit',sans-serif" }}>{f.name}</span>
+                      <StreakBadge count={f.streak}/>
+                    </div>
+                    <span style={{ fontSize:11,color:"#ffffff44",flexShrink:0 }}>{last?ago(last.ts):""}</span>
+                  </div>
+                  <div style={{ display:"flex",alignItems:"center",gap:5,marginTop:3 }}>
+                    <div style={{ width:6,height:6,borderRadius:"50%",background:fm.color,flexShrink:0 }}/><span style={{ fontSize:11.5,color:fm.color,fontFamily:"'Outfit',sans-serif",fontWeight:500 }}>{fm.label}</span>
+                    <span style={{ color:"#ffffff18",fontSize:11 }}>·</span><span style={{ fontSize:10.5,color:"#ffffff44",fontFamily:"'Outfit',sans-serif" }}>⚡{f.score} {SCORE_LBL(f.score)}</span>
+                  </div>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:5 }}>
+                    <p style={{ margin:0,fontSize:12.5,color:unread?"#ffffffbb":"#ffffff44",fontFamily:"'Outfit',sans-serif",fontWeight:unread?500:400,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:200 }}>
+                      {last?(last.kind==="voice"?"🎤 Voice note":(last.from==="me"?"You: ":"")+last.text):"Say something 👋"}
+                    </p>
+                    {unread>0&&<div style={{ minWidth:20,height:20,borderRadius:10,background:fm.color,color:"#000",fontSize:10.5,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px",flexShrink:0,fontFamily:"'Outfit',sans-serif" }}>{unread}</div>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── FIND ────────────────────────────────────────────────────
+function Find({ user, friends, pendingSent, onSendRequest, onBack }) {
+  const [search,setSearch]=useState(""); const [sent,setSent]=useState(pendingSent); const m=MOODS[user.mood];
+  const filtered=UNIVERSE.filter(p=>!friends.find(f=>f.id===p.id)&&(p.name.toLowerCase().includes(search.toLowerCase())||p.vibeId.toLowerCase().includes(search.toLowerCase())));
+  const send=p=>{setSent(s=>[...s,p.id]);onSendRequest(p);};
+  return (
+    <div style={{ flex:1,overflowY:"auto",paddingBottom:90 }}>
+      <div style={{ padding:"52px 20px 16px",display:"flex",alignItems:"center",gap:12 }}>
+        <button onClick={onBack} style={{ width:36,height:36,borderRadius:11,background:"rgba(255,255,255,0.07)",border:"1.5px solid rgba(255,255,255,0.1)",color:"#fff",fontSize:17,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>←</button>
+        <h2 style={{ margin:0,fontSize:22,fontWeight:800,color:"#fff",fontFamily:"'Outfit',sans-serif",letterSpacing:-.7 }}>Find People</h2>
+      </div>
+      <div style={{ padding:"0 20px 18px" }}>
+        <div style={{ position:"relative" }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name or @vibe_id…" autoFocus style={{ ...ISX(m.color),paddingLeft:42,marginBottom:0 }}/>
+          <span style={{ position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"#ffffff40",fontSize:15 }}>🔍</span>
+        </div>
+        <p style={{ margin:"9px 0 0",fontSize:11,color:"#ffffff35",textAlign:"center",fontFamily:"'Outfit',sans-serif" }}>Requests expire in 24 hours</p>
+      </div>
+      <div style={{ padding:"0 14px",display:"flex",flexDirection:"column",gap:6 }}>
+        {filtered.length===0&&search&&<div style={{ textAlign:"center",padding:"44px 0",color:"#ffffff30",fontFamily:"'Outfit',sans-serif" }}><div style={{ fontSize:32,marginBottom:8 }}>🔍</div><p style={{ fontSize:13 }}>No one found</p></div>}
+        {filtered.map((p,i)=>{const pm=MOODS[p.mood]||MOODS.chill;const isSent=sent.includes(p.id);return(
+          <div key={p.id} style={{ display:"flex",gap:13,alignItems:"center",padding:"13px",borderRadius:16,background:"rgba(255,255,255,0.03)",border:"1.5px solid rgba(255,255,255,0.055)",animation:`fadeUp .3s ease ${i*.07}s both` }}>
+            <Avatar letter={p.avatar} mood={p.mood} size={48} aura={p.online} pulse={p.online}/>
+            <div style={{ flex:1,minWidth:0 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:7 }}><span style={{ fontWeight:700,color:"#fff",fontSize:14,fontFamily:"'Outfit',sans-serif" }}>{p.name}</span><StreakBadge count={p.streak}/></div>
+              <p style={{ margin:"3px 0 0",fontSize:11.5,color:pm.color,fontFamily:"'Outfit',sans-serif",fontWeight:500 }}>{p.vibeId}</p>
+              {p.mutual>0&&<p style={{ margin:"2px 0 0",fontSize:10.5,color:"#ffffff40",fontFamily:"'Outfit',sans-serif" }}>{p.mutual} mutual</p>}
+            </div>
+            <button onClick={()=>!isSent&&send(p)} style={{ padding:"9px 18px",borderRadius:22,flexShrink:0,background:isSent?"rgba(255,255,255,0.05)":`${pm.color}22`,border:isSent?"1.5px solid rgba(255,255,255,0.08)":`1.5px solid ${pm.color}66`,color:isSent?"#ffffff44":pm.color,fontSize:12.5,fontWeight:700,cursor:isSent?"default":"pointer",fontFamily:"'Outfit',sans-serif",transition:"all .2s" }}>{isSent?"Sent ✓":"Add +"}</button>
+          </div>
+        );})}
       </div>
     </div>
+  );
+}
 
-    <button id="logoutBtn" onclick="logout()">Logout</button>
-  </div>
-
-  <div id="dpModal" class="modal" onclick="closeDpModal()">
-    <div class="modalContent" onclick="event.stopPropagation()">
-      <img id="modalDpImg" src="">
-      <div class="modalBtns">
-        <button class="greenBtn" onclick="changeDp()">Change Photo</button>
-        <button class="redBtn" onclick="removeDp()">Remove Photo</button>
-        <button class="greyBtn" onclick="closeDpModal()">Close</button>
+// ─── REQUESTS ────────────────────────────────────────────────
+function Requests({ user, requests, onAccept, onDecline, onBack }) {
+  const incoming=requests.filter(r=>r.to===user.vibeId); const outgoing=requests.filter(r=>r.from===user.vibeId);
+  return (
+    <div style={{ flex:1,overflowY:"auto",paddingBottom:90 }}>
+      <div style={{ padding:"52px 20px 20px",display:"flex",alignItems:"center",gap:12 }}>
+        <button onClick={onBack} style={{ width:36,height:36,borderRadius:11,background:"rgba(255,255,255,0.07)",border:"1.5px solid rgba(255,255,255,0.1)",color:"#fff",fontSize:17,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>←</button>
+        <h2 style={{ margin:0,fontSize:22,fontWeight:800,color:"#fff",fontFamily:"'Outfit',sans-serif",letterSpacing:-.7 }}>Requests</h2>
       </div>
+      {incoming.length>0&&(
+        <div style={{ padding:"0 14px 24px" }}>
+          <p style={{ fontSize:10.5,color:"#ffffff40",fontFamily:"'Outfit',sans-serif",letterSpacing:1.5,marginBottom:12,paddingLeft:4 }}>INCOMING</p>
+          {incoming.map((req,i)=>{const rm=MOODS[req.senderMood]||MOODS.chill;const exp=Math.max(0,24-~~((Date.now()-req.ts)/3600000));return(
+            <div key={req.id} style={{ padding:"15px",borderRadius:18,background:"rgba(255,255,255,0.04)",border:"1.5px solid rgba(255,255,255,0.08)",marginBottom:10,animation:`fadeUp .3s ease ${i*.08}s both` }}>
+              <div style={{ display:"flex",gap:13,alignItems:"center",marginBottom:12 }}>
+                <Avatar letter={req.senderName[0]} mood={req.senderMood} size={50} aura/>
+                <div style={{ flex:1 }}>
+                  <span style={{ fontWeight:700,color:"#fff",fontSize:15,fontFamily:"'Outfit',sans-serif" }}>{req.senderName}</span>
+                  <p style={{ margin:"3px 0 0",fontSize:12,color:rm.color,fontFamily:"'Outfit',sans-serif",fontWeight:500 }}>{req.senderVibeId}</p>
+                  <p style={{ margin:"4px 0 0",fontSize:11,color:"#ffffff44",fontFamily:"'Outfit',sans-serif" }}>{rm.emoji} {rm.label} · expires {exp}h</p>
+                </div>
+              </div>
+              <div style={{ display:"flex",gap:8 }}>
+                <button onClick={()=>onAccept(req)} style={{ flex:1,padding:"10px",borderRadius:12,border:"none",background:`linear-gradient(135deg,${rm.color},${rm.color}99)`,color:"#000",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Outfit',sans-serif" }}>Accept</button>
+                <button onClick={()=>onDecline(req)} style={{ flex:1,padding:"10px",borderRadius:12,background:"rgba(255,255,255,0.06)",border:"1.5px solid rgba(255,255,255,0.08)",color:"#ffffff66",fontSize:13,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontWeight:500 }}>Decline</button>
+              </div>
+            </div>
+          );})}
+        </div>
+      )}
+      {outgoing.length>0&&(
+        <div style={{ padding:"0 14px" }}>
+          <p style={{ fontSize:10.5,color:"#ffffff40",fontFamily:"'Outfit',sans-serif",letterSpacing:1.5,marginBottom:12,paddingLeft:4 }}>SENT</p>
+          {outgoing.map((req,i)=>{const rm=MOODS[req.receiverMood]||MOODS.chill;return(
+            <div key={req.id} style={{ display:"flex",gap:13,alignItems:"center",padding:"12px",borderRadius:14,background:"rgba(255,255,255,0.025)",marginBottom:8,border:"1.5px solid rgba(255,255,255,0.04)",animation:`fadeUp .3s ease ${i*.08}s both` }}>
+              <Avatar letter={req.receiverName[0]} mood={req.receiverMood} size={42}/>
+              <div style={{ flex:1 }}><span style={{ fontWeight:600,color:"#ffffffaa",fontSize:13,fontFamily:"'Outfit',sans-serif" }}>{req.receiverName}</span><p style={{ margin:"2px 0 0",fontSize:11,color:rm.color,fontFamily:"'Outfit',sans-serif" }}>{req.receiverVibeId}</p></div>
+              <span style={{ fontSize:11,color:"#ffffff30",fontFamily:"'Outfit',sans-serif" }}>Pending…</span>
+            </div>
+          );})}
+        </div>
+      )}
+      {incoming.length===0&&outgoing.length===0&&<div style={{ textAlign:"center",padding:"60px 30px",fontFamily:"'Outfit',sans-serif" }}><div style={{ fontSize:40,marginBottom:10 }}>📭</div><p style={{ fontSize:14,color:"#ffffff55" }}>No requests right now</p></div>}
     </div>
-  </div>
+  );
+}
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, where, getDocs, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyCOk009zNd4BMtS0ySPedwhNTwNMCc-CyI",
-    authDomain: "vibez-6ed71.firebaseapp.com",
-    projectId: "vibez-6ed71",
-    storageBucket: "vibez-6ed71.firebasestorage.app",
-    messagingSenderId: "524036069373",
-    appId: "1:524036069373:web:db9006783b42f1b5852b94",
-    measurementId: "G-SHVC4TZVYL"
+// ─── VOICE BUBBLE ────────────────────────────────────────────
+function VoiceBubble({ msg, mood, isSelf }) {
+  const [playing,setPlaying]=useState(false); const [played,setPlayed]=useState(false); const [progress,setProgress]=useState(0); const [elapsed,setElapsed]=useState(0);
+  const ivRef=useRef(); const m=MOODS[mood]||MOODS.chill; const dur=msg.duration||8;
+  const BARS=[3,5,8,6,9,4,7,5,8,6,4,7,5,9,6,4,8,5,7,3,6,9,4,7,5];
+  const toggle=()=>{
+    if(played&&!isSelf)return;
+    if(playing){clearInterval(ivRef.current);setPlaying(false);}
+    else{setPlaying(true);setElapsed(0);setProgress(0);ivRef.current=setInterval(()=>{setElapsed(e=>{const n=+(e+0.1).toFixed(1);setProgress(n/dur);if(n>=dur){clearInterval(ivRef.current);setPlaying(false);setPlayed(true);}return n;});},100);}
   };
+  useEffect(()=>()=>clearInterval(ivRef.current),[]);
+  return (
+    <div style={{ maxWidth:240,padding:"12px 14px",borderRadius:isSelf?"18px 18px 5px 18px":"18px 18px 18px 5px",background:isSelf?`linear-gradient(135deg,${m.color}ee,${m.color}99)`:"rgba(255,255,255,0.12)",backdropFilter:"blur(10px)",border:isSelf?"none":"1px solid rgba(255,255,255,0.15)",boxShadow:isSelf?`0 2px 18px ${m.color}44`:"none",position:"relative",overflow:"visible" }}>
+      <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:180,height:180,pointerEvents:"none",zIndex:0,opacity:playing?1:0.35,transition:"opacity .4s" }}>
+        <VoiceAura mood={mood} active={playing} size={90}/>
+      </div>
+      <div style={{ position:"relative",zIndex:1,display:"flex",alignItems:"center",gap:10 }}>
+        <button onClick={toggle} style={{ width:36,height:36,borderRadius:"50%",flexShrink:0,background:isSelf?"rgba(0,0,0,0.25)":"rgba(255,255,255,0.15)",border:"none",cursor:played&&!isSelf?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:isSelf?"#000":"#fff",opacity:played&&!isSelf?0.45:1,transition:"transform .15s" }}
+          onMouseDown={e=>e.currentTarget.style.transform="scale(.9)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"}
+        >{playing?"⏸":"▶"}</button>
+        <div style={{ flex:1,display:"flex",alignItems:"center",gap:2,height:32 }}>
+          {BARS.map((h,i)=><div key={i} style={{ width:3,borderRadius:3,flexShrink:0,height:`${h*3}px`,background:progress>i/BARS.length?(isSelf?"rgba(0,0,0,0.55)":m.color):(isSelf?"rgba(0,0,0,0.25)":"rgba(255,255,255,0.25)"),transition:"background .1s" }}/>)}
+        </div>
+        <span style={{ fontSize:10.5,flexShrink:0,fontFamily:"'Outfit',sans-serif",color:isSelf?"rgba(0,0,0,0.55)":"#ffffffaa",fontWeight:600 }}>{playing?elapsed.toFixed(1)+"s":dur+"s"}</span>
+      </div>
+      <div style={{ position:"relative",zIndex:1,display:"flex",alignItems:"center",gap:4,marginTop:7 }}>
+        <div style={{ width:5,height:5,borderRadius:"50%",background:isSelf?"rgba(0,0,0,0.4)":m.color,animation:playing?"avPulse 1s infinite":"none" }}/>
+        <span style={{ fontSize:10,fontFamily:"'Outfit',sans-serif",color:isSelf?"rgba(0,0,0,0.45)":"#ffffffaa",fontStyle:"italic" }}>{played&&!isSelf?"🔒 played once":(VOICE_AURA[mood]?.label||"Voice")+" note"}</span>
+      </div>
+    </div>
+  );
+}
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  
-  // FIX 1: AUTO-LOGIN ENABLED 👑
-  await setPersistence(auth, browserLocalPersistence);
-  
-  const errorBox = document.getElementById('error');
-  let currentUser = null;
-  let currentUserData = null;
-  let currentChatId = null;
-  let currentChatUnsub = null;
-  let currentChatPartner = null;
+// ─── TEXT BUBBLE ─────────────────────────────────────────────
+function TextBubble({ msg, userMood, contactMood, onDelete }) {
+  const isSelf=msg.from==="me"; const mood=isSelf?userMood:contactMood; const m=MOODS[mood]||MOODS.chill;
+  const [ttlLeft,setTtlLeft]=useState(msg.ttl); const [gone,setGone]=useState(false); const [react,setReact]=useState(null); const [reactLabel,setReactLabel]=useState(null); const [showReacts,setShowReacts]=useState(false);
+  const reacts=SECRET_REACTS[mood]||SECRET_REACTS.chill;
+  useEffect(()=>{if(!msg.ttl)return;const iv=setInterval(()=>{setTtlLeft(c=>{if(c<=1){clearInterval(iv);setGone(true);setTimeout(()=>onDelete(msg.id),450);return 0;}return c-1;});},1000);return()=>clearInterval(iv);},[]);
+  if(gone)return null;
+  return (
+    <div style={{ display:"flex",flexDirection:"column",alignItems:isSelf?"flex-end":"flex-start",opacity:gone?0:1,transform:gone?"scale(.85)":"scale(1)",transition:"opacity .4s,transform .4s" }}>
+      <div onDoubleClick={()=>setShowReacts(p=>!p)} style={{ maxWidth:"73%",padding:"11px 15px",cursor:"pointer",borderRadius:isSelf?"18px 18px 5px 18px":"18px 18px 18px 5px",background:isSelf?`linear-gradient(135deg,${m.color}ee,${m.color}99)`:"rgba(255,255,255,0.12)",backdropFilter:"blur(10px)",border:isSelf?"none":"1px solid rgba(255,255,255,0.15)",boxShadow:isSelf?`0 2px 18px ${m.color}44`:"none",transition:"transform .1s" }}
+        onMouseDown={e=>e.currentTarget.style.transform="scale(.97)"} onMouseUp={e=>e.currentTarget.style.transform="scale(1)"}
+      >
+        <p style={{ margin:0,fontSize:14.5,lineHeight:1.5,color:isSelf?"#000":"#fff",fontFamily:"'Outfit',sans-serif",fontWeight:isSelf?500:400 }}>{msg.text}</p>
+        {msg.ttl&&<div style={{ marginTop:7,display:"flex",alignItems:"center",gap:5 }}><div style={{ flex:1,height:2,background:"rgba(0,0,0,0.18)",borderRadius:2,overflow:"hidden" }}><div style={{ height:"100%",width:`${(ttlLeft/msg.ttl)*100}%`,background:isSelf?"rgba(0,0,0,0.35)":m.color,transition:"width 1s linear",borderRadius:2 }}/></div><span style={{ fontSize:10,color:isSelf?"rgba(0,0,0,0.5)":m.color,fontWeight:600 }}>{ttlLeft}s</span></div>}
+      </div>
+      <div style={{ display:"flex",alignItems:"center",gap:5,marginTop:4,flexDirection:isSelf?"row-reverse":"row" }}>
+        <span style={{ fontSize:10.5,color:"rgba(255,255,255,0.4)",fontFamily:"'Outfit',sans-serif" }}>{ago(msg.ts)}</span>
+        {isSelf&&<span style={{ fontSize:10,color:msg.seen?m.color:"rgba(255,255,255,0.3)",fontWeight:700 }}>{msg.seen?"✓✓":"✓"}</span>}
+        {react&&<div style={{ display:"flex",alignItems:"center",gap:3,padding:"1px 7px",borderRadius:10,background:"rgba(0,0,0,0.3)",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,0.15)",animation:"popIn .2s ease" }}><span style={{ fontSize:13 }}>{react}</span>{reactLabel&&<span style={{ fontSize:10,color:"rgba(255,255,255,0.7)",fontFamily:"'Outfit',sans-serif" }}>{reactLabel}</span>}</div>}
+      </div>
+      {showReacts&&(
+        <div style={{ display:"flex",flexWrap:"wrap",gap:6,padding:"10px 12px",background:"rgba(0,0,0,0.6)",backdropFilter:"blur(20px)",borderRadius:16,border:"1.5px solid rgba(255,255,255,0.15)",marginTop:7,animation:"popIn .18s ease",maxWidth:240 }}>
+          <p style={{ width:"100%",margin:"0 0 7px",fontSize:10,color:"rgba(255,255,255,0.5)",fontFamily:"'Outfit',sans-serif",letterSpacing:1,fontWeight:600 }}>SECRET REACTIONS</p>
+          {reacts.map(r=>(
+            <button key={r.e} onClick={()=>{setReact(r.e);setReactLabel(r.l);setShowReacts(false);}} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"8px 10px",borderRadius:11,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",cursor:"pointer" }}
+              onMouseDown={e=>e.currentTarget.style.background="rgba(255,255,255,0.18)"} onMouseUp={e=>e.currentTarget.style.background="rgba(255,255,255,0.08)"}
+            ><span style={{ fontSize:20 }}>{r.e}</span><span style={{ fontSize:9,color:"rgba(255,255,255,0.55)",fontFamily:"'Outfit',sans-serif",whiteSpace:"nowrap" }}>{r.l}</span></button>
+          ))}
+          {isSelf&&<button onClick={()=>{onDelete(msg.id);setShowReacts(false);}} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"8px 10px",borderRadius:11,background:"rgba(255,60,60,0.15)",border:"1px solid rgba(255,60,60,0.25)",cursor:"pointer" }}><span style={{ fontSize:18 }}>🗑</span><span style={{ fontSize:9,color:"#ff8888",fontFamily:"'Outfit',sans-serif" }}>Delete</span></button>}
+        </div>
+      )}
+    </div>
+  );
+}
 
-  const emojis = ['😂','😭','💜','🔥','👑','😍','🥰','😎','🫂','✨','🚀','✅','🤣','😊','🙄','😘'];
-  
-  window.addEmoji = () => {
-    const e = emojis[Math.floor(Math.random() * emojis.length)];
-    document.getElementById('msgInput').value += e;
+function TypingBubble({ mood }) {
+  const m=MOODS[mood]||MOODS.chill;
+  const LABELS={chill:"chilling and typing…",happy:"typing happily…",sad:"feeling something…",angry:"typing intensely…",romantic:"typing softly…",lonely:"finally typing…"};
+  return (
+    <div style={{ display:"flex",alignItems:"center",gap:9,padding:"11px 15px",borderRadius:"18px 18px 18px 5px",background:"rgba(255,255,255,0.12)",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,0.15)",width:"fit-content" }}>
+      <div style={{ display:"flex",gap:3 }}>{[0,1,2].map(i=><div key={i} style={{ width:5,height:5,borderRadius:"50%",background:m.color,animation:"bounce 1.2s infinite",animationDelay:`${i*.18}s` }}/>)}</div>
+      <span style={{ fontSize:11.5,color:"rgba(255,255,255,0.6)",fontFamily:"'Outfit',sans-serif",fontStyle:"italic" }}>{LABELS[mood]||"typing…"}</span>
+    </div>
+  );
+}
+
+// ─── CHAT SCREEN (with full world background) ─────────────────
+function Chat({ user, contact, initMsgs, onBack }) {
+  const [msgs,setMsgs]=useState(initMsgs||[]);
+  const [text,setText]=useState("");
+  const [ttl,setTtl]=useState(null);
+  const [showTtl,setShowTtl]=useState(false);
+  const [typing,setTyping]=useState(false);
+  const [recording,setRecording]=useState(false);
+  const [recSecs,setRecSecs]=useState(0);
+  const recRef=useRef(); const endRef=useRef();
+  const cm=MOODS[contact.mood]||MOODS.chill;
+  const um=MOODS[user.mood]||MOODS.chill;
+
+  useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"});},[msgs,typing]);
+
+  const REPLIES={chill:["lowkey 🌊","facts ✌️","vibe fr"],happy:["omg yesss ✨","literally same 💛","you're the best!!"],sad:["i feel that 💙","same honestly...","🌧️"],angry:["BRO 💢","exactly 🔥","ugh."],romantic:["💕","you're so cute","stoppp 🥺"],lonely:["...","yeah 🌙","just us i guess"]};
+  const simReply=()=>{setTimeout(()=>setTyping(true),500);const arr=REPLIES[contact.mood]||REPLIES.chill;setTimeout(()=>{setTyping(false);setMsgs(p=>[...p,{id:"m"+Date.now(),text:arr[~~(Math.random()*arr.length)],from:"them",ts:Date.now(),seen:false,ttl:null,kind:"text"}]);},1800+Math.random()*700);};
+  const sendText=()=>{if(!text.trim())return;setMsgs(p=>[...p,{id:"m"+Date.now(),text:text.trim(),from:"me",ts:Date.now(),seen:false,ttl,kind:"text"}]);setText("");simReply();};
+  const startRec=()=>{setRecording(true);setRecSecs(0);recRef.current=setInterval(()=>setRecSecs(s=>s+1),1000);};
+  const sendVoice=()=>{clearInterval(recRef.current);const dur=Math.max(1,recSecs);setRecording(false);setRecSecs(0);setMsgs(p=>[...p,{id:"m"+Date.now(),text:"",from:"me",ts:Date.now(),seen:false,ttl:null,kind:"voice",duration:dur}]);setTimeout(()=>setTyping(true),800);setTimeout(()=>{setTyping(false);setMsgs(p=>[...p,{id:"m"+Date.now(),text:"",from:"them",ts:Date.now(),seen:false,ttl:null,kind:"voice",duration:~~(Math.random()*6)+3}]);},2400);};
+  const cancelRec=()=>{clearInterval(recRef.current);setRecording(false);setRecSecs(0);};
+  const delMsg=id=>setMsgs(p=>p.filter(m=>m.id!==id));
+
+  return (
+    <div style={{ flex:1,display:"flex",flexDirection:"column",minHeight:0,position:"relative" }}>
+
+      {/* ── FULL WORLD BACKGROUND ── */}
+      <div style={{ position:"absolute",inset:0,zIndex:0,overflow:"hidden" }}>
+        <MoodWorldCanvas mood={contact.mood}/>
+        {/* overlay to keep text readable */}
+        <div style={{ position:"absolute",inset:0,background:"rgba(0,0,0,0.28)",zIndex:1 }}/>
+      </div>
+
+      {/* ── HEADER (glassmorphism) ── */}
+      <div style={{ position:"relative",zIndex:10,padding:"50px 16px 13px",background:"rgba(0,0,0,0.35)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${cm.color}30`,display:"flex",gap:13,alignItems:"center",flexShrink:0 }}>
+        <button onClick={onBack} style={{ width:36,height:36,borderRadius:11,background:"rgba(255,255,255,0.1)",border:"1.5px solid rgba(255,255,255,0.18)",color:"#fff",fontSize:17,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(10px)" }}>←</button>
+        <Avatar letter={contact.avatar} mood={contact.mood} size={42} aura={contact.online} pulse={contact.online}/>
+        <div style={{ flex:1,minWidth:0 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:7 }}>
+            <span style={{ fontWeight:700,color:"#fff",fontSize:15,fontFamily:"'Outfit',sans-serif",textShadow:"0 1px 6px rgba(0,0,0,0.6)" }}>{contact.name}</span>
+            <StreakBadge count={contact.streak}/>
+          </div>
+          <p style={{ margin:"2px 0 0",fontSize:11.5,color:cm.color,fontFamily:"'Outfit',sans-serif",fontWeight:500 }}>{contact.online?"active now":contact.lastSeen} · {cm.emoji} {cm.label}</p>
+        </div>
+        <div style={{ textAlign:"right",flexShrink:0 }}>
+          <div style={{ fontSize:13,fontWeight:700,color:cm.color,fontFamily:"'Outfit',sans-serif" }}>⚡{contact.score}</div>
+          <div style={{ fontSize:10,color:"rgba(255,255,255,0.5)",fontFamily:"'Outfit',sans-serif" }}>{SCORE_LBL(contact.score)}</div>
+        </div>
+      </div>
+
+      {/* ── MESSAGES ── */}
+      <div style={{ flex:1,overflowY:"auto",padding:"16px 14px",display:"flex",flexDirection:"column",gap:10,position:"relative",zIndex:5 }}>
+        {msgs.length===0&&!typing&&(
+          <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,minHeight:200 }}>
+            <span style={{ fontSize:44,filter:`drop-shadow(0 0 20px ${cm.color})` }}>{cm.emoji}</span>
+            <p style={{ fontSize:14,margin:0,color:"rgba(255,255,255,0.7)",fontFamily:"'Outfit',sans-serif",textShadow:"0 1px 8px rgba(0,0,0,0.8)" }}>Say something…</p>
+            <p style={{ fontSize:12,margin:0,color:"rgba(255,255,255,0.35)",fontFamily:"'Outfit',sans-serif" }}>It'll disappear anyway 👻</p>
+          </div>
+        )}
+        {msgs.map(msg=>(
+          msg.kind==="voice"
+            ? <div key={msg.id} style={{ display:"flex",flexDirection:"column",alignItems:msg.from==="me"?"flex-end":"flex-start",gap:4 }}>
+                <VoiceBubble msg={msg} mood={msg.from==="me"?user.mood:contact.mood} isSelf={msg.from==="me"}/>
+                <span style={{ fontSize:10.5,color:"rgba(255,255,255,0.4)",fontFamily:"'Outfit',sans-serif" }}>{ago(msg.ts)}</span>
+              </div>
+            : <TextBubble key={msg.id} msg={msg} userMood={user.mood} contactMood={contact.mood} onDelete={delMsg}/>
+        ))}
+        {typing&&<TypingBubble mood={contact.mood}/>}
+        <div ref={endRef}/>
+      </div>
+
+      {/* ── TTL STRIP ── */}
+      {showTtl&&(
+        <div style={{ display:"flex",gap:7,padding:"10px 14px",background:"rgba(0,0,0,0.5)",backdropFilter:"blur(20px)",borderTop:"1px solid rgba(255,255,255,0.1)",overflowX:"auto",flexShrink:0,position:"relative",zIndex:10 }}>
+          {[null,5,30,60,"reply"].map(t=>(
+            <button key={String(t)} onClick={()=>{setTtl(t);setShowTtl(false);}} style={{ padding:"7px 15px",borderRadius:22,border:"none",flexShrink:0,background:ttl===t?`${cm.color}cc`:`${cm.color}22`,color:ttl===t?"#000":cm.color,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Outfit',sans-serif",transition:"all .2s" }}>
+              {t===null?"♾️ Keep":t==="reply"?"↩ On reply":`⏱ ${t}s`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── RECORDING BAR ── */}
+      {recording&&(
+        <div style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:"rgba(0,0,0,0.5)",backdropFilter:"blur(20px)",borderTop:"1px solid rgba(255,255,255,0.1)",flexShrink:0,position:"relative",zIndex:10 }}>
+          <div style={{ position:"relative",width:44,height:44,flexShrink:0 }}>
+            <VoiceAura mood={user.mood} active={true} size={22}/>
+            <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:14,height:14,borderRadius:"50%",background:um.color,zIndex:1,animation:"avPulse 1s infinite" }}/>
+          </div>
+          <div style={{ flex:1 }}>
+            <p style={{ margin:0,fontSize:13,color:um.color,fontFamily:"'Outfit',sans-serif",fontWeight:700 }}>Recording… {recSecs}s</p>
+            <p style={{ margin:"2px 0 0",fontSize:10.5,color:"rgba(255,255,255,0.5)",fontFamily:"'Outfit',sans-serif",fontStyle:"italic" }}>{VOICE_AURA[user.mood]?.label} aura active</p>
+          </div>
+          <button onClick={cancelRec} style={{ background:"rgba(255,60,60,0.2)",border:"1px solid rgba(255,60,60,0.4)",color:"#ff8888",borderRadius:10,padding:"7px 12px",cursor:"pointer",fontSize:12,fontFamily:"'Outfit',sans-serif" }}>Cancel</button>
+          <button onClick={sendVoice} style={{ background:`linear-gradient(135deg,${um.color},${um.color}99)`,border:"none",color:"#000",borderRadius:10,padding:"7px 14px",cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:"'Outfit',sans-serif",boxShadow:`0 3px 14px ${um.color}44` }}>Send 🎤</button>
+        </div>
+      )}
+
+      {/* ── INPUT BAR ── */}
+      {!recording&&(
+        <div style={{ display:"flex",gap:9,alignItems:"center",padding:"10px 14px 28px",background:"rgba(0,0,0,0.45)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",borderTop:"1px solid rgba(255,255,255,0.1)",flexShrink:0,position:"relative",zIndex:10 }}>
+          <button onClick={()=>setShowTtl(p=>!p)} style={{ width:40,height:40,borderRadius:12,flexShrink:0,background:ttl!=null?`${cm.color}30`:"rgba(255,255,255,0.1)",border:ttl!=null?`1.5px solid ${cm.color}66`:"1.5px solid rgba(255,255,255,0.15)",color:ttl!=null?cm.color:"rgba(255,255,255,0.6)",cursor:"pointer",fontSize:17,transition:"all .2s" }}>⏱</button>
+          <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendText()}
+            placeholder={`${cm.emoji} Send a ${cm.label.toLowerCase()} vibe…`}
+            style={{ flex:1,background:"rgba(255,255,255,0.1)",backdropFilter:"blur(10px)",border:`1.5px solid ${cm.color}33`,borderRadius:22,padding:"11px 16px",color:"#fff",fontSize:14,fontFamily:"'Outfit',sans-serif",outline:"none",transition:"border-color .2s" }}
+            onFocus={e=>e.target.style.borderColor=`${cm.color}88`}
+            onBlur={e=>e.target.style.borderColor=`${cm.color}33`}
+          />
+          {!text&&<button onMouseDown={startRec} style={{ width:40,height:40,borderRadius:12,flexShrink:0,background:`${um.color}30`,border:`1.5px solid ${um.color}66`,color:um.color,cursor:"pointer",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center" }}>🎤</button>}
+          {text&&<button onClick={sendText} style={{ width:40,height:40,borderRadius:12,flexShrink:0,background:`linear-gradient(135deg,${um.color},${um.color}99)`,border:"none",color:"#000",cursor:"pointer",fontSize:18,boxShadow:`0 4px 18px ${um.color}55`,transition:"all .22s" }}>↑</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PROFILE ─────────────────────────────────────────────────
+function Profile({ user, onChangeMood, onLogout }) {
+  const m=MOODS[user.mood]; const [ghost,setGhost]=useState(false); const [readR,setReadR]=useState(true); const [showMoods,setShowMoods]=useState(false);
+  return (
+    <div style={{ flex:1,overflowY:"auto",paddingBottom:90 }}>
+      <div style={{ padding:"52px 22px 20px" }}><h2 style={{ margin:0,fontSize:22,fontWeight:800,color:"#fff",fontFamily:"'Outfit',sans-serif",letterSpacing:-.7 }}>Profile</h2></div>
+      <div style={{ margin:"0 16px 18px",padding:"24px 20px",borderRadius:20,background:`linear-gradient(135deg,${m.dim},rgba(255,255,255,0.025))`,border:`1.5px solid ${m.color}33`,display:"flex",flexDirection:"column",alignItems:"center",gap:13,animation:"fadeUp .4s ease" }}>
+        <div style={{ position:"relative" }}>
+          <Avatar letter={user.name[0]} mood={user.mood} size={72} aura/>
+          <button onClick={()=>setShowMoods(p=>!p)} style={{ position:"absolute",bottom:-3,right:-3,zIndex:2,background:m.color,borderRadius:"50%",width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,cursor:"pointer",border:"none",boxShadow:`0 2px 10px ${m.color}66` }}>{m.emoji}</button>
+        </div>
+        <div style={{ textAlign:"center" }}>
+          <p style={{ margin:0,fontSize:20,fontWeight:800,color:"#fff",fontFamily:"'Outfit',sans-serif" }}>{user.name}</p>
+          <p style={{ margin:"5px 0 0",fontSize:13,color:m.color,fontFamily:"'Outfit',sans-serif",fontWeight:500 }}>{user.vibeId}</p>
+        </div>
+        <div style={{ padding:"6px 14px",borderRadius:20,background:`${m.color}18`,border:`1.5px solid ${m.color}44`,fontSize:12,color:m.color,fontFamily:"'Outfit',sans-serif",fontWeight:600 }}>{m.emoji} {m.label} mood</div>
+      </div>
+      {showMoods&&(
+        <div style={{ margin:"0 16px 18px",padding:"16px",borderRadius:18,background:"rgba(255,255,255,0.03)",border:"1.5px solid rgba(255,255,255,0.07)",animation:"fadeUp .25s ease" }}>
+          <p style={{ margin:"0 0 11px",fontSize:10.5,color:"#ffffff40",fontFamily:"'Outfit',sans-serif",letterSpacing:1.5,fontWeight:600 }}>CHANGE MOOD</p>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {Object.entries(MOODS).map(([k,v])=>(
+              <button key={k} onClick={()=>{onChangeMood(k);setShowMoods(false);}} style={{ padding:"8px 15px",borderRadius:22,border:"none",background:user.mood===k?`${v.color}cc`:`${v.color}15`,color:user.mood===k?"#000":v.color,fontSize:13,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontWeight:600,transition:"all .2s" }}>{v.emoji} {v.label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{ margin:"0 16px",display:"flex",flexDirection:"column",gap:8 }}>
+        {[{icon:"👻",label:"Ghost Mode",sub:"Hide your online status",val:ghost,set:setGhost},{icon:"👁",label:"Read Receipts",sub:"Show when you've seen messages",val:readR,set:setReadR}].map(s=>(
+          <div key={s.label} style={{ display:"flex",alignItems:"center",gap:13,padding:"14px 15px",borderRadius:16,background:"rgba(255,255,255,0.03)",border:"1.5px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ fontSize:19 }}>{s.icon}</span>
+            <div style={{ flex:1 }}><p style={{ margin:0,fontSize:13.5,fontWeight:600,color:"#ffffffdd",fontFamily:"'Outfit',sans-serif" }}>{s.label}</p><p style={{ margin:"2px 0 0",fontSize:11,color:"#ffffff44",fontFamily:"'Outfit',sans-serif" }}>{s.sub}</p></div>
+            <div onClick={()=>s.set(v=>!v)} style={{ width:46,height:25,borderRadius:13,background:s.val?m.color:"rgba(255,255,255,0.1)",position:"relative",cursor:"pointer",transition:"background .3s",flexShrink:0 }}>
+              <div style={{ position:"absolute",top:3,left:s.val?24:3,width:19,height:19,borderRadius:"50%",background:"#fff",transition:"left .25s",boxShadow:"0 1px 5px rgba(0,0,0,0.5)" }}/>
+            </div>
+          </div>
+        ))}
+        <button onClick={onLogout} style={{ padding:"14px 15px",borderRadius:16,background:"rgba(255,60,60,0.07)",border:"1.5px solid rgba(255,60,60,0.2)",color:"#ff6666",cursor:"pointer",fontSize:13.5,fontWeight:600,fontFamily:"'Outfit',sans-serif",display:"flex",alignItems:"center",gap:10,transition:"background .2s" }}
+          onMouseDown={e=>e.currentTarget.style.background="rgba(255,60,60,0.14)"} onMouseUp={e=>e.currentTarget.style.background="rgba(255,60,60,0.07)"}
+        ><span style={{ fontSize:18 }}>🚪</span><div style={{ flex:1,textAlign:"left" }}><p style={{ margin:0 }}>Log Out</p><p style={{ margin:"2px 0 0",fontSize:11,color:"#ffffff44",fontWeight:400 }}>You'll need to create ID again</p></div></button>
+      </div>
+    </div>
+  );
+}
+
+// ─── BOTTOM NAV ───────────────────────────────────────────────
+function BottomNav({ tab, onTab, color, reqCount }) {
+  const [pressed,setPressed]=useState(null);
+  const TABS=[{id:"home",icon:"💬",label:"Chats"},{id:"find",icon:"🔍",label:"Find"},{id:"profile",icon:"👤",label:"Profile"}];
+  return (
+    <div style={{ position:"fixed",bottom:0,left:0,right:0,maxWidth:480,margin:"0 auto",background:"rgba(6,6,16,0.97)",backdropFilter:"blur(28px)",borderTop:"1px solid rgba(255,255,255,0.07)",display:"flex",justifyContent:"space-around",padding:"11px 0 26px",zIndex:100 }}>
+      {TABS.map(t=>{const isActive=tab===t.id;return(
+        <button key={t.id} onClick={()=>onTab(t.id)} onMouseDown={()=>setPressed(t.id)} onMouseUp={()=>setPressed(null)} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",position:"relative",padding:"4px 20px",transform:pressed===t.id?"scale(.88)":isActive?"scale(1.04)":"scale(1)",transition:"transform .18s cubic-bezier(.34,1.56,.64,1)" }}>
+          {isActive&&<div style={{ position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:44,height:44,borderRadius:"50%",background:`${color}15`,animation:"navGlow 2s ease-in-out infinite" }}/>}
+          <span style={{ fontSize:isActive?22:20,filter:isActive?`drop-shadow(0 0 6px ${color})`:"none",transition:"all .25s",position:"relative",zIndex:1 }}>{t.icon}</span>
+          <span style={{ fontSize:10.5,fontFamily:"'Outfit',sans-serif",fontWeight:isActive?700:400,color:isActive?color:"#ffffff44",transition:"color .25s",position:"relative",zIndex:1 }}>{t.label}</span>
+          {isActive&&<div style={{ position:"absolute",bottom:-11,left:"50%",transform:"translateX(-50%)",width:20,height:3,borderRadius:2,background:color,animation:"navLine .25s ease" }}/>}
+          {t.id==="home"&&reqCount>0&&<div style={{ position:"absolute",top:0,right:8,width:17,height:17,borderRadius:"50%",background:color,color:"#000",fontSize:9.5,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",animation:"popIn .3s ease" }}>{reqCount}</div>}
+        </button>
+      );})}
+    </div>
+  );
+}
+
+// ─── ROOT ────────────────────────────────────────────────────
+export default function VibeZ() {
+  const [phase,setPhase]=useState("splash");
+  const [user,setUser]=useState(null);
+  const [tab,setTab]=useState("home");
+  const [friends,setFriends]=useState([]);
+  const [requests,setRequests]=useState([{id:"req0",from:"@pulse_arc8812",to:null,senderName:"Blaze",senderVibeId:"@pulse_arc8812",senderMood:"angry",receiverName:"",receiverVibeId:"",receiverMood:"",ts:Date.now()-3600000}]);
+  const [pendingSent,setPendingSent]=useState([]);
+  const [activeChat,setActiveChat]=useState(null);
+
+  const m=MOODS[user?.mood||"chill"];
+  const incomingCount=requests.filter(r=>r.to===user?.vibeId).length;
+
+  const onSplash=saved=>{if(saved){setUser(saved);setRequests(p=>p.map(r=>r.to===null?{...r,to:saved.vibeId}:r));setFriends([{...UNIVERSE[0],score:89},{...UNIVERSE[4],score:74}]);setPhase("app");}else setPhase("create");};
+  const onCreate=u=>{setUser(u);setRequests(p=>p.map(r=>r.to===null?{...r,to:u.vibeId}:r));setFriends([{...UNIVERSE[0],score:89},{...UNIVERSE[4],score:74}]);setPhase("app");};
+  const onLogout=()=>{clearUser();setUser(null);setFriends([]);setActiveChat(null);setTab("home");setPhase("create");};
+  const onTab=t=>{if(t==="home"&&incomingCount>0&&tab==="home"){setTab("requests");return;}setTab(t);setActiveChat(null);};
+  const onSendReq=p=>{setRequests(prev=>[...prev,{id:"req"+Date.now(),from:user.vibeId,to:p.vibeId,senderName:user.name,senderVibeId:user.vibeId,senderMood:user.mood,receiverName:p.name,receiverVibeId:p.vibeId,receiverMood:p.mood,ts:Date.now()}]);setPendingSent(prev=>[...prev,p.id]);};
+  const onAccept=req=>{const f=UNIVERSE.find(u=>u.vibeId===req.senderVibeId);setFriends(p=>[...p,f?{...f,score:50}:{id:req.id,name:req.senderName,vibeId:req.senderVibeId,mood:req.senderMood,avatar:req.senderName[0],streak:0,score:30,online:false,lastSeen:"now",mutual:0}]);setRequests(p=>p.filter(r=>r.id!==req.id));};
+  const onDecline=req=>setRequests(p=>p.filter(r=>r.id!==req.id));
+
+  if(phase==="splash") return <Splash onResult={onSplash}/>;
+  if(phase==="create") return <CreateAccount onDone={onCreate}/>;
+
+  if(activeChat){
+    const contact=friends.find(f=>f.id===activeChat);
+    if(!contact){setActiveChat(null);return null;}
+    return (
+      <div style={{ maxWidth:480,margin:"0 auto",height:"100vh",display:"flex",flexDirection:"column",overflow:"hidden",position:"relative",background:"#000" }}>
+        <style>{CSS}</style>
+        <Chat user={user} contact={contact} initMsgs={INIT_MSGS[activeChat]||[]} onBack={()=>setActiveChat(null)}/>
+      </div>
+    );
   }
 
-  window.openDpModal = () => {
-    document.getElementById('modalDpImg').src = document.getElementById('myProfilePic').src;
-    document.getElementById('dpModal').style.display = 'flex';
-  }
-  
-  window.closeDpModal = () => {
-    document.getElementById('dpModal').style.display = 'none';
-  }
-  
-  window.changeDp = () => {
-    const newUrl = prompt("New Imgur URL paste karo:");
-    if (newUrl) {
-      document.getElementById('picUrl').value = newUrl;
-      document.getElementById('myProfilePic').src = newUrl;
-      document.getElementById('modalDpImg').src = newUrl;
-      saveProfile();
-    }
-    closeDpModal();
-  }
-  
-  window.removeDp = () => {
-    const defaultPic = 'https://i.imgur.com/6VBx3io.png';
-    document.getElementById('picUrl').value = defaultPic;
-    document.getElementById('myProfilePic').src = defaultPic;
-    saveProfile();
-    closeDpModal();
-  }
+  return (
+    <div style={{ maxWidth:480,margin:"0 auto",height:"100vh",background:m.bg,display:"flex",flexDirection:"column",overflow:"hidden",transition:"background 1.1s ease" }}>
+      <style>{CSS}</style>
+      <div style={{ position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,height:180,background:`radial-gradient(ellipse at 50% -10%,${m.color}12 0%,transparent 70%)`,pointerEvents:"none",zIndex:0,transition:"background 1.1s" }}/>
+      <div style={{ flex:1,overflowY:"auto",position:"relative",zIndex:1 }}>
+        {tab==="home"&&<Home user={user} friends={friends} requests={requests} onOpenChat={c=>setActiveChat(c.id)} onGoFind={()=>setTab("find")} onGoRequests={()=>setTab("requests")}/>}
+        {tab==="find"&&<Find user={user} friends={friends} pendingSent={pendingSent} onSendRequest={onSendReq} onBack={()=>setTab("home")}/>}
+        {tab==="requests"&&<Requests user={user} requests={requests} onAccept={onAccept} onDecline={onDecline} onBack={()=>setTab("home")}/>}
+        {tab==="profile"&&<Profile user={user} onChangeMood={mood=>{const u={...user,mood};setUser(u);saveUser(u);}} onLogout={onLogout}/>}
+      </div>
+      <BottomNav tab={tab==="requests"?"home":tab} onTab={onTab} color={m.color} reqCount={incomingCount}/>
+    </div>
+  );
+}
 
-  // FIX 2: SIGNUP WITH RETRY 🚀
-  window.signup = async (retries = 3) => {
-    const username = document.getElementById('username').value.trim().toLowerCase().replace('@', '');
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('pass').value;
-    errorBox.innerText = '';
-    
-    if (!username) { errorBox.innerText = 'Username required'; return; }
-    if (username.length < 3) { errorBox.innerText = 'Username min 3 letters'; return; }
-    
-    try {
-      errorBox.innerText = 'Checking username...';
-      const q = query(collection(db, "users"), where("username", "==", username));
-      const snap = await getDocs(q);
-      if (!snap.empty) { errorBox.innerText = 'Username already taken'; return; }
       
-      errorBox.innerText = 'Creating account...';
-      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-      await setDoc(doc(db, "users", userCred.user.uid), {
-        email: email,
-        username: username,
-        displayName: username,
-        picUrl: 'https://i.imgur.com/6VBx3io.png',
-        uid: userCred.user.uid,
-        friends: [],
-        requests: [],
-        online: true,
-        showOnline: true,
-        showLastSeen: true,
-        lastSeen: serverTimestamp()
-      });
-      errorBox.innerText = '';
-    } catch (e) { 
-      if (retries > 0 && (e.code === 'auth/network-request-failed' || e.message.includes('network'))) {
-        errorBox.innerText = `Network error, retrying... ${retries} tries left`;
-        await new Promise(res => setTimeout(res, 1500));
-        return signup(retries - 1);
-      }
-      errorBox.innerText = e.message; 
-    }
-  }
-
-  window.login = () => {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('pass').value;
-    errorBox.innerText = '';
-    signInWithEmailAndPassword(auth, email, pass).catch((e) => errorBox.innerText = e.message);
-  }
-
-  window.logout = async () => {
-    if (currentUser) {
-      await updateDoc(doc(db, "users", currentUser.uid), { online: false, lastSeen: serverTimestamp() });
-    }
-    signOut(auth);
-  }
-
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      currentUser = user;
-      await updateDoc(doc(db, "users", user.uid), { online: true });
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) {
-        currentUserData = userDoc.data();
-        document.getElementById('login').classList.add('hidden');
-        document.getElementById('app').classList.remove('hidden');
-        document.getElementById('myUsername').innerText = currentUserData.username;
-        document.getElementById('displayName').value = currentUserData.displayName || currentUserData.username;
-        document.getElementById('picUrl').value = currentUserData.picUrl || '';
-        document.getElementById('myProfilePic').src = currentUserData.picUrl || 'https://i.imgur.com/6VBx3io.png';
-        if (!currentUserData.showOnline) document.getElementById('onlineToggle').classList.remove('on');
-        if (!currentUserData.showLastSeen) document.getElementById('lastSeenToggle').classList.remove('on');
-        loadFriends();
-        loadRequests();
-      }
-    } else {
-      if (currentUser) await updateDoc(doc(db, "users", currentUser.uid), { online: false, lastSeen: serverTimestamp() });
-      currentUser = null;
-      if (currentChatUnsub) currentChatUnsub();
-      document.getElementById('login').classList.remove('hidden');
-      document.getElementById('app').classList.add('hidden');
-    }
-  });
-
-  window.showTab = (tab) => {
-    closeChat();
-    document.getElementById('friendsDiv').classList.add('hidden');
-    document.getElementById('peopleDiv').classList.add('hidden');
-    document.getElementById('requestsDiv').classList.add('hidden');
-    document.getElementById('profileDiv').classList.add('hidden');
-    document.getElementById('friendsTab').classList.remove('activeTab');
-    document.getElementById('peopleTab').classList.remove('activeTab');
-    document.getElementById('reqTab').classList.remove('activeTab');
-    document.getElementById('profileTab').classList.remove('activeTab');
-    document.getElementById(tab + 'Div').classList.remove('hidden');
-    document.getElementById(tab + 'Tab').classList.add('activeTab');
-    
-    // Tab open hote hi data load karo
-    if (tab === 'friends') loadFriends();
-    if (tab === 'requests') loadRequests();
-  }
-
-  // NEW: FRIENDS LIST LOAD KARO 👑
-  window.loadFriends = async () => {
-    if (!currentUserData) return;
-    const friendsDiv = document.getElementById('friendsList');
-    friendsDiv.innerHTML = '<p style="text-align:center;color:#6b7280">Loading...</p>';
-    
-    if (!currentUserData.friends || currentUserData.friends.length === 0) {
-      friendsDiv.innerHTML = '<p style="text-align:center;color:#6b7280">No friends yet. Go to Add tab!</p>';
-      return;
-    }
-    
-    let html = '';
-    for (const friendId of currentUserData.friends) {
-      const friendDoc = await getDoc(doc(db, "users", friendId));
-      if (friendDoc.exists()) {
-        const f = friendDoc.data();
-        html += `<div class="userRow" onclick="openChat('${f.uid}','${f.username}','${f.picUrl}')">
-          <div class="userInfo">
-            <img class="profilePic" src="${f.picUrl}">
-            <span>@${f.username}</span>
-            ${f.online ? '<div class="onlineDot"></div>' : '<div class="offlineDot"></div>'}
-          </div>
-        </div>`;
-      }
-    }
-    friendsDiv.innerHTML = html || '<p style="text-align:center;color:#6b7280">No friends</p>';
-  }
-
-  // NEW: REQUESTS LOAD KARO 🚀
-  window.loadRequests = async () => {
-    if (!currentUserData) return;
-    const reqDiv = document.getElementById('requestList');
-    reqDiv.innerHTML = '<p style="text-align:center;color:#6b7280">Loading...</p>';
-    
-    if (!currentUserData.requests || currentUserData.requests.length === 0) {
-      reqDiv.innerHTML = '<p style="text-align:center;color:#6b7280">No requests</p>';
-      document.getElementById('reqNotif').classList.add('hidden');
-      return;
-    }
-    
-    document.getElementById('reqNotif').classList.remove('hidden');
-    document.getElementById('reqNotif').innerText = currentUserData.requests.length;
-    
-    let html = '';
-    for (const reqId of currentUserData.requests) {
-      const reqDoc = await getDoc(doc(db, "users", reqId));
-      if (reqDoc.exists()) {
-        const r = reqDoc.data();
-        html += `<div class="userRow">
-          <div class="userInfo">
-            <img class="profilePic" src="${r.picUrl}">
-            <span>@${r.username}</span>
-          </div>
-          <div>
-            <button class="smallBtn greenBtn" onclick="acceptRequest('${r.uid}')">Accept</button>
-            <button class="smallBtn redBtn" onclick="rejectRequest('${r.uid}')">Reject</button>
-          </div>
-        </div>`;
-      }
-    }
-    reqDiv.innerHTML = html;
-  }
-
-  // NEW: USER SEARCH KARO 💜
-  window.searchUser = async () => {
-    const search = document.getElementById('searchUser').value.trim().toLowerCase().replace('@','');
-    if (!search) return;
-    const userList = document.getElementById('userList');
-    userList.innerHTML = '<p>Searching...</p>';
-    
-    const q = query(collection(db, "users"), where("username", "==", search));
-    const snap = await getDocs(q);
-    
-    if (snap.empty) {
-      userList.innerHTML = '<p style="text-align:center;color:#6b7280">User not found</p>';
-      return;
-    }
-    
-    let html = '';
-    snap.forEach((docu) => {
-      const u = docu.data();
-      if (u.uid !== currentUser.uid) {
-        const isFriend = currentUserData.friends && currentUserData.friends.includes(u.uid);
-        const isRequested = u.requests && u.requests.includes(currentUser.uid);
-        html += `<div class="userRow">
-          <div class="userInfo">
-            <img class="profilePic" src="${u.picUrl}">
-            <span>@${u.username}</span>
-          </div>
-          ${isFriend ? '<span style="color:#16a34a">Friends ✅</span>' : 
-            isRequested ? '<span style="color:#f59e0b">Requested</span>' :
-            `<button class="smallBtn" onclick="sendRequest('${u.uid}')">Add Friend</button>`}
-        </div>`;
-      }
-    });
-    userList.innerHTML = html || '<p>That is you 😂</p>';
-  }
-
-  // NEW: FRIEND REQUEST BHEJO 🚀
-  window.sendRequest = async (toUid) => {
-    await updateDoc(doc(db, "users", toUid), {
-      requests: arrayUnion(currentUser.uid)
-    });
-    alert('Friend request sent! ✅');
-    searchUser();
-  }
-
-  // NEW: REQUEST ACCEPT KARO 💜
-  window.acceptRequest = async (fromUid) => {
-    await updateDoc(doc(db, "users", currentUser.uid), {
-      friends: arrayUnion(fromUid),
-      requests: arrayRemove(fromUid)
-    });
-    await updateDoc(doc(db, "users", fromUid), {
-      friends: arrayUnion(currentUser.uid)
-    });
-    // Update local data
-    currentUserData.friends = currentUserData.friends || [];
-    currentUserData.friends.push(fromUid);
-    currentUserData.requests = currentUserData.requests.filter(id => id !== fromUid);
-    loadRequests();
-    alert('Friend added! 🎉');
-  }
-
-  // NEW: REQUEST REJECT KARO
-  window.rejectRequest = async (fromUid) => {
-    await updateDoc(doc(db, "users", currentUser.uid), {
-      requests: arrayRemove(fromUid)
-    });
-    currentUserData.requests = currentUserData.requests.filter(id => id !== fromUid);
-    loadRequests();
-  }
-
-  // NEW: PROFILE SAVE KARO 👑
-  window.saveProfile = async () => {
-    const displayName = document.getElementById('displayName').value;
-    const picUrl = document.getElementById('picUrl').value;
-    await updateDoc(doc(db, "users", currentUser.uid), {
-      displayName: displayName,
-      picUrl: picUrl
-    });
-    currentUserData.displayName = displayName;
-    currentUserData.picUrl = picUrl;
-    alert('Profile saved! ✅');
-  }
-
-  // NEW: ONLINE TOGGLE
-  window.toggleOnline = async () => {
-    const toggle = document.getElementById('onlineToggle');
-    toggle.classList.toggle('on');
-    const show = toggle.classList.contains('on');
-    await updateDoc(doc(db, "users", currentUser.uid), { showOnline: show });
-    currentUserData.showOnline = show;
-  }
-
-  // NEW: LAST SEEN TOGGLE
-  window.toggleLastSeen = async () => {
-    const toggle = document.getElementById('lastSeenToggle');
-    toggle.classList.toggle('on');
-    const show = toggle.classList.contains('on');
-    await updateDoc(doc(db, "users", currentUser.uid), { showLastSeen: show });
-    currentUserData.showLastSeen = show;
-  }
-
-  // NEW: CHAT FUNCTIONS
-  window.openChat = (uid, username, picUrl) => {
-    document.getElementById('friendsDiv').classList.add('hidden');
-    document.getElementById('chatDiv').classList.remove('hidden');
-    document.getElementById('chatWith').innerText = '@' + username;
-    document.getElementById('chatPic').src = picUrl;
-    // Yahan chat load karne ka code baad mein daal denge
-  }
-
-  window.closeChat = () => {
-    document.getElementById('chatDiv').classList.add('hidden');
-    document.getElementById('friendsDiv').classList.remove('hidden');
-  }
-
-  window.sendMsg = () => {
-    alert('Chat feature next update mein 😂💜');
-  }
-</script>
-</body>
-</html>
